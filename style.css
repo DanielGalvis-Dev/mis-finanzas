@@ -1,0 +1,11 @@
+[hidden] { display: none !important; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+.tab-btn.active {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.chart-card canvas { max-height: 320px; }

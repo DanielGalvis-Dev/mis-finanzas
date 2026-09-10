@@ -1,0 +1,65 @@
+import { currency, budgetRowsForMonth, setBudget, currentMonth, monthsWithData } from "../state.js";
+import { cx, amountClass, pillClass } from "../ui.js";
+
+let selectedMonth = null;
+
+export function renderPresupuesto(container, { markDirty }) {
+  if (!selectedMonth) {
+    const months = monthsWithData();
+    selectedMonth = months.length ? months[months.length - 1] : currentMonth();
+  }
+  const rows = budgetRowsForMonth(selectedMonth);
+  const totals = rows.reduce(
+    (acc, r) => ({ estimated: acc.estimated + r.estimated, real: acc.real + r.real, balance: acc.balance + r.balance }),
+    { estimated: 0, real: 0, balance: 0 }
+  );
+
+  container.innerHTML = `
+    <div class="flex gap-2.5 items-center flex-wrap mb-3.5">
+      <input type="month" id="monthPicker" class="${cx.input} w-auto" value="${selectedMonth}" />
+    </div>
+    <div class="${cx.card}">
+      <div class="${cx.tableWrap}">
+      <table class="w-full text-sm">
+        <thead><tr>
+          <th class="${cx.th}">Categoría</th><th class="${cx.th}">Tipo</th><th class="${cx.th}">Estimado</th><th class="${cx.th}">Real</th><th class="${cx.th}">Balance</th>
+        </tr></thead>
+        <tbody>
+          ${rows
+            .map(
+              (r) => `<tr>
+              <td class="${cx.td}">${r.category.name}</td>
+              <td class="${cx.td}"><span class="${pillClass(r.category.kind)}">${r.category.kind}</span></td>
+              <td class="${cx.td}"><input type="number" step="1" class="budget-input ${cx.input} w-32" data-cat="${r.category.id}" value="${r.estimated}" /></td>
+              <td class="${cx.td} ${amountClass(r.real)}">${currency(r.real)}</td>
+              <td class="${cx.td} ${amountClass(r.balance)}">${currency(r.balance)}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+        <tfoot>
+          <tr class="font-bold">
+            <td class="${cx.td} border-t-2 border-slate-600">TOTALES</td><td class="${cx.td} border-t-2 border-slate-600"></td>
+            <td class="${cx.td} border-t-2 border-slate-600">${currency(totals.estimated)}</td>
+            <td class="${cx.td} border-t-2 border-slate-600 ${amountClass(totals.real)}">${currency(totals.real)}</td>
+            <td class="${cx.td} border-t-2 border-slate-600 ${amountClass(totals.balance)}">${currency(totals.balance)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+    </div>
+  `;
+
+  container.querySelector("#monthPicker").addEventListener("change", (e) => {
+    selectedMonth = e.target.value;
+    renderPresupuesto(container, { markDirty });
+  });
+
+  container.querySelectorAll(".budget-input").forEach((input) => {
+    input.addEventListener("change", (e) => {
+      setBudget(selectedMonth, e.target.dataset.cat, e.target.value);
+      markDirty();
+      renderPresupuesto(container, { markDirty });
+    });
+  });
+}

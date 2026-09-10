@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "schemaVersion": 1,
+    "lastUpdated": "2026-09-10T21:48:12.489Z",
+    "migratedFrom": null
+  },
+  "accounts": [
+    {
+      "id": "acc_efectivo",
+      "name": "Efectivo",
+      "type": "cash",
+      "initialBalance": 0
+    },
+    {
+      "id": "acc_banco",
+      "name": "Cuenta bancaria",
+      "type": "bank",
+      "initialBalance": 0
+    },
+    {
+      "id": "acc_ahorros",
+      "name": "Ahorros",
+      "type": "savings",
+      "initialBalance": 0
+    },
+    {
+      "id": "acc_credito",
+      "name": "Tarjeta de crédito",
+      "type": "credit",
+      "initialBalance": 0,
+      "creditLimit": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_salario",
+      "name": "Salario",
+      "kind": "Entrada"
+    },
+    {
+      "id": "cat_pasajes",
+      "name": "Pasajes",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_seguridad_social",
+      "name": "Seguridad Social",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_servicios",
+      "name": "Servicios",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_nina",
+      "name": "Niña",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_margui",
+      "name": "Margui",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_otros",
+      "name": "Otros",
+      "kind": "Salida"
+    },
+    {
+      "id": "cat_ahorro",
+      "name": "Ahorro",
+      "kind": "Ahorro"
+    }
+  ],
+  "transactions": [],
+  "budgets": [],
+  "transfers": []
+}
