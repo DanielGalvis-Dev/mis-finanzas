@@ -32,7 +32,44 @@ export function signIn() {
       accessToken = resp.access_token;
       resolve(accessToken);
     };
-    tokenClient.requestAccessToken({ prompt: accessToken ? "" : "consent" });
+    tokenClient.requestAccessToken({ prompt: "consent" });
+  });
+}
+
+// Tries to get a token without showing any UI - works when the browser still has an
+// active Google session and the user already granted this app access before (e.g. on
+// page reload). Resolves to null (never rejects) if it can't, so callers can fall back
+// to the normal sign-in button without treating it as an error.
+export function signInSilent() {
+  return new Promise((resolve) => {
+    if (!tokenClient) return resolve(null);
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, 6000);
+    tokenClient.callback = (resp) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (resp.error) {
+        console.warn("[MisFinanzas] silent sign-in failed:", resp.error, resp);
+        return resolve(null);
+      }
+      accessToken = resp.access_token;
+      resolve(accessToken);
+    };
+    try {
+      tokenClient.requestAccessToken({ prompt: "" });
+    } catch {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve(null);
+      }
+    }
   });
 }
 
@@ -48,7 +85,7 @@ export function isSignedIn() {
   return !!accessToken;
 }
 
-async function driveFetch(url, options = {}) {
+async function driveFetch(url, options = {}, retried = false) {
   const resp = await fetch(url, {
     ...options,
     headers: {
@@ -56,6 +93,11 @@ async function driveFetch(url, options = {}) {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+  if (resp.status === 401 && !retried) {
+    // Access token expired mid-session - refresh it silently once and retry.
+    const refreshed = await signInSilent();
+    if (refreshed) return driveFetch(url, options, true);
+  }
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
     throw new Error(`Drive API ${resp.status}: ${text}`);

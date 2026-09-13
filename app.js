@@ -1,4 +1,4 @@
-import { initTokenClient, signIn, loadOrCreateData, saveData, getFileId } from "./drive.js";
+import { initTokenClient, signIn, signInSilent, loadOrCreateData, saveData } from "./drive.js";
 import { state, setData } from "./state.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderDiario } from "./views/diario.js";
@@ -27,6 +27,11 @@ async function boot() {
     showSignInError("No se pudo inicializar Google Identity Services. Revisa tu conexión e inténtalo de nuevo.");
     console.error(err);
   }
+  // Google's token client requires a user gesture to open its (even instantaneous)
+  // popup - it can't be triggered automatically on page load, so there's always one
+  // click per fresh page load. What we CAN skip on that click is the full permissions
+  // screen: handleSignIn tries a silent grant first and only falls back to the full
+  // consent screen if that fails.
   els.signInBtn.addEventListener("click", handleSignIn);
 }
 
@@ -35,17 +40,9 @@ async function handleSignIn() {
   els.signInBtn.textContent = "Conectando...";
   hideSignInError();
   try {
-    await signIn();
-    const seedResp = await fetch("./seed-data.json").then((r) => r.json());
-    const { data, created } = await loadOrCreateData(seedResp);
-    setData(data);
-    showApp();
-    if (created) {
-      setSyncStatus("saved", "Archivo creado en Drive");
-    } else {
-      setSyncStatus("saved", "Sincronizado");
-    }
-    switchView("dashboard");
+    const token = await signInSilent();
+    if (!token) await signIn();
+    await loadDataAndShowApp();
   } catch (err) {
     console.error(err);
     showSignInError("No se pudo conectar con Google. " + (err?.message || ""));
@@ -53,6 +50,15 @@ async function handleSignIn() {
     els.signInBtn.disabled = false;
     els.signInBtn.textContent = "Conectar con Google Drive";
   }
+}
+
+async function loadDataAndShowApp() {
+  const seedResp = await fetch("./seed-data.json").then((r) => r.json());
+  const { data, created } = await loadOrCreateData(seedResp);
+  setData(data);
+  showApp();
+  setSyncStatus("saved", created ? "Archivo creado en Drive" : "Sincronizado");
+  switchView("dashboard");
 }
 
 function showSignInError(msg) {
