@@ -1,15 +1,8 @@
-import {
-  state,
-  currency,
-  addTransaction,
-  updateTransaction,
-  deleteTransaction,
-  categoryById,
-  accountById,
-  transactionsSorted,
-} from "../state.js";
-import { openModal, confirmDialog } from "../modal.js";
-import { cx, amountClass, pillClass } from "../ui.js";
+import { state, transactionsSorted } from "../state.js";
+import { cx } from "../ui.js";
+import { renderTransactionList, bindTransactionList, openTransactionForm } from "./transactionList.js";
+
+export { openTransactionForm };
 
 let currentFilters = { month: "", accountId: "", categoryId: "" };
 
@@ -40,7 +33,7 @@ export function renderDiario(container, { markDirty }) {
       <button class="${cx.btn} ${cx.btnPrimary}" id="addTxBtn">+ Agregar movimiento</button>
     </div>
     <div class="${cx.card}">
-      ${rows.length === 0 ? `<div class="${cx.emptyState}">No hay movimientos con estos filtros.</div>` : renderTable(rows)}
+      ${rows.length === 0 ? `<div class="${cx.emptyState}">No hay movimientos con estos filtros.</div>` : renderTransactionList(rows)}
     </div>
   `;
 
@@ -60,110 +53,5 @@ export function renderDiario(container, { markDirty }) {
     openTransactionForm({ onSaved: markDirty, onRerender: rerender });
   });
 
-  container.querySelectorAll("[data-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tx = state.data.transactions.find((t) => t.id === btn.dataset.edit);
-      openTransactionForm({ tx, onSaved: markDirty, onRerender: rerender });
-    });
-  });
-  container.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (confirmDialog("¿Borrar este movimiento?")) {
-        deleteTransaction(btn.dataset.delete);
-        markDirty();
-        rerender();
-      }
-    });
-  });
-}
-
-function renderTable(rows) {
-  return `
-    <div class="${cx.tableWrap}">
-    <table class="w-full text-sm">
-      <thead><tr>
-        <th class="${cx.th}">Fecha</th><th class="${cx.th}">Cuenta</th><th class="${cx.th}">Categoría</th><th class="${cx.th}">Descripción</th><th class="${cx.th}">Tipo</th><th class="${cx.th}">Monto</th><th class="${cx.th}"></th>
-      </tr></thead>
-      <tbody>
-        ${rows
-          .map((t) => {
-            const cat = categoryById(t.categoryId);
-            const acc = accountById(t.accountId);
-            return `<tr>
-              <td class="${cx.td}">${t.date}</td>
-              <td class="${cx.td}">${acc ? acc.name : "—"}</td>
-              <td class="${cx.td}">${cat ? cat.name : "—"}</td>
-              <td class="${cx.td}">${t.description || ""}</td>
-              <td class="${cx.td}"><span class="${pillClass(t.type)}">${t.type}</span></td>
-              <td class="${cx.td} ${amountClass(t.amount)}">${currency(t.amount)}</td>
-              <td class="${cx.td}">
-                <div class="flex gap-1.5">
-                  <button class="${cx.btn} ${cx.btnSmall}" data-edit="${t.id}">Editar</button>
-                  <button class="${cx.btnDanger} ${cx.btnSmall}" data-delete="${t.id}">Borrar</button>
-                </div>
-              </td>
-            </tr>`;
-          })
-          .join("")}
-      </tbody>
-    </table>
-    </div>
-  `;
-}
-
-export function openTransactionForm({ tx, onSaved, onRerender }) {
-  const accounts = state.data.accounts;
-  const categories = state.data.categories;
-  const isEdit = !!tx;
-  const today = new Date().toISOString().slice(0, 10);
-
-  openModal({
-    title: isEdit ? "Editar movimiento" : "Agregar movimiento",
-    submitLabel: isEdit ? "Guardar cambios" : "Agregar",
-    bodyHTML: `
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="${cx.label}">Fecha</label>
-          <input type="date" name="date" class="${cx.input}" value="${tx ? tx.date : today}" required />
-        </div>
-        <div><label class="${cx.label}">Tipo</label>
-          <select name="type" class="${cx.input}" required>
-            <option value="Entrada" ${tx?.type === "Entrada" ? "selected" : ""}>Entrada</option>
-            <option value="Salida" ${!tx || tx?.type === "Salida" ? "selected" : ""}>Salida</option>
-          </select>
-        </div>
-        <div><label class="${cx.label}">Cuenta</label>
-          <select name="accountId" class="${cx.input}" required>
-            ${accounts.map((a) => `<option value="${a.id}" ${tx?.accountId === a.id ? "selected" : ""}>${a.name}</option>`).join("")}
-          </select>
-        </div>
-        <div><label class="${cx.label}">Categoría</label>
-          <select name="categoryId" class="${cx.input}" required>
-            ${categories.map((c) => `<option value="${c.id}" ${tx?.categoryId === c.id ? "selected" : ""}>${c.name}</option>`).join("")}
-          </select>
-        </div>
-        <div class="col-span-2"><label class="${cx.label}">Descripción</label>
-          <input type="text" name="description" class="${cx.input}" value="${tx ? (tx.description || "").replace(/"/g, "&quot;") : ""}" />
-        </div>
-        <div class="col-span-2"><label class="${cx.label}">Monto (positivo, el tipo define el signo)</label>
-          <input type="number" name="amount" step="1" min="0" class="${cx.input}" value="${tx ? Math.abs(tx.amount) : ""}" required />
-        </div>
-      </div>
-    `,
-    onSubmit: (values, close) => {
-      const signedAmount = values.type === "Salida" ? -Math.abs(Number(values.amount)) : Math.abs(Number(values.amount));
-      const payload = {
-        date: values.date,
-        type: values.type,
-        accountId: values.accountId,
-        categoryId: values.categoryId,
-        description: values.description || "",
-        amount: signedAmount,
-      };
-      if (isEdit) updateTransaction(tx.id, payload);
-      else addTransaction(payload);
-      onSaved();
-      close();
-      onRerender();
-    },
-  });
+  bindTransactionList(container, rows, { markDirty, onRerender: rerender });
 }

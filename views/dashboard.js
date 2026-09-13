@@ -1,8 +1,9 @@
-import { state, currency, accountBalance, totalBalance, categoryById, accountById, transactionsSorted } from "../state.js";
-import { openTransactionForm } from "./diario.js";
+import { state, currency, accountBalance, totalBalance, transactionsSorted } from "../state.js";
+import { openTransactionForm, renderTransactionList, bindTransactionList } from "./transactionList.js";
 import { cx, amountClass } from "../ui.js";
 
 export function renderDashboard(container, { markDirty }) {
+  const rerender = () => renderDashboard(container, { markDirty });
   const accounts = state.data.accounts;
   const recent = transactionsSorted().slice(0, 8);
 
@@ -31,38 +32,13 @@ export function renderDashboard(container, { markDirty }) {
       <button class="${cx.btn} ${cx.btnPrimary} ${cx.btnSmall}" id="quickAddBtn">+ Agregar movimiento</button>
     </div>
     <div class="${cx.card}">
-      ${recent.length === 0 ? `<div class="${cx.emptyState}">Aún no hay movimientos.</div>` : renderRecentTable(recent)}
+      ${renderTransactionList(recent, { showActions: false })}
     </div>
   `;
 
   container.querySelector("#quickAddBtn").addEventListener("click", () => {
-    openTransactionForm({ onSaved: markDirty, onRerender: () => renderDashboard(container, { markDirty }) });
+    openTransactionForm({ onSaved: markDirty, onRerender: rerender });
   });
-}
 
-function renderRecentTable(rows) {
-  return `
-    <div class="${cx.tableWrap}">
-    <table class="w-full text-sm">
-      <thead><tr>
-        <th class="${cx.th}">Fecha</th><th class="${cx.th}">Cuenta</th><th class="${cx.th}">Categoría</th><th class="${cx.th}">Descripción</th><th class="${cx.th}">Monto</th>
-      </tr></thead>
-      <tbody>
-        ${rows
-          .map((t) => {
-            const cat = categoryById(t.categoryId);
-            const acc = accountById(t.accountId);
-            return `<tr>
-              <td class="${cx.td}">${t.date}</td>
-              <td class="${cx.td}">${acc ? acc.name : "—"}</td>
-              <td class="${cx.td}">${cat ? cat.name : "—"}</td>
-              <td class="${cx.td}">${t.description || ""}</td>
-              <td class="${cx.td} ${amountClass(t.amount)}">${currency(t.amount)}</td>
-            </tr>`;
-          })
-          .join("")}
-      </tbody>
-    </table>
-    </div>
-  `;
+  bindTransactionList(container, recent, { markDirty, onRerender: rerender });
 }
