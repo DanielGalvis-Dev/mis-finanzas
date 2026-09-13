@@ -11,6 +11,7 @@ const els = {
   signedOut: document.getElementById("signedOutView"),
   appView: document.getElementById("appView"),
   tabs: document.getElementById("tabs"),
+  mobileTabs: document.getElementById("mobileTabs"),
   syncStatus: document.getElementById("syncStatus"),
   signInBtn: document.getElementById("signInBtn"),
   signInError: document.getElementById("signInError"),
@@ -81,15 +82,16 @@ function showApp() {
   els.signedOut.hidden = true;
   els.appView.hidden = false;
   els.tabs.hidden = false;
+  els.mobileTabs.hidden = false;
   els.syncStatus.hidden = false;
-  els.tabs.querySelectorAll(".tab-btn").forEach((btn) => {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 }
 
 function switchView(view) {
   currentView = view;
-  els.tabs.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
   document.querySelectorAll("#appView .view").forEach((sec) => (sec.hidden = sec.id !== `view-${view}`));
   renderCurrentView();
 }
@@ -118,6 +120,7 @@ function renderCurrentView() {
 function handleSignOut() {
   els.appView.hidden = true;
   els.tabs.hidden = true;
+  els.mobileTabs.hidden = true;
   els.syncStatus.hidden = true;
   els.signedOut.hidden = false;
 }

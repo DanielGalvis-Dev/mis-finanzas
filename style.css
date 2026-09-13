@@ -8,4 +8,9 @@
   color: #fff;
 }
 
+#mobileTabs .tab-btn.active {
+  background-color: transparent;
+  color: #60a5fa;
+}
+
 .chart-card canvas { max-height: 320px; }
