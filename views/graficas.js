@@ -7,7 +7,6 @@ const GRID = "#2c2c2a";
 
 let selectedMonth = null;
 let chartCategoria = null;
-let chartMensual = null;
 let chartAhorro = null;
 
 export function renderGraficas(container) {
@@ -24,12 +23,8 @@ export function renderGraficas(container) {
         <canvas id="chartCategoria" height="260"></canvas>
       </div>
       <div class="${cx.card} chart-card">
-        <div class="${cx.sectionTitle} mt-0">Entradas vs Salidas por mes</div>
-        <canvas id="chartMensual" height="260"></canvas>
-      </div>
-      <div class="${cx.card} chart-card lg:col-span-2">
         <div class="${cx.sectionTitle} mt-0">Evolución del ahorro</div>
-        <canvas id="chartAhorro" height="220"></canvas>
+        <canvas id="chartAhorro" height="260"></canvas>
       </div>
     </div>
   `;
@@ -40,7 +35,6 @@ export function renderGraficas(container) {
   });
 
   drawCategoriaChart(selectedMonth);
-  drawMensualChart(months);
   drawAhorroChart();
 }
 
@@ -71,41 +65,6 @@ function drawCategoriaChart(month) {
     },
     options: {
       plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
-        y: { grid: { color: GRID }, ticks: { color: INK_SECONDARY, callback: (v) => formatCompact(v) } },
-      },
-    },
-  });
-}
-
-function drawMensualChart(months) {
-  const entradas = months.map((m) =>
-    state.data.transactions
-      .filter((t) => t.date.slice(0, 7) === m && t.amount > 0 && !t.excludeFromCategoryTotals)
-      .reduce((s, t) => s + t.amount, 0)
-  );
-  const salidas = months.map((m) =>
-    Math.abs(
-      state.data.transactions
-        .filter((t) => t.date.slice(0, 7) === m && t.amount < 0 && !t.excludeFromCategoryTotals)
-        .reduce((s, t) => s + t.amount, 0)
-    )
-  );
-
-  if (chartMensual) chartMensual.destroy();
-  const ctx = document.getElementById("chartMensual");
-  chartMensual = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: months,
-      datasets: [
-        { label: "Entradas", data: entradas, backgroundColor: PALETTE[0], borderRadius: 4, maxBarThickness: 28 },
-        { label: "Salidas", data: salidas, backgroundColor: PALETTE[7], borderRadius: 4, maxBarThickness: 28 },
-      ],
-    },
-    options: {
-      plugins: { legend: { position: "bottom", labels: { color: INK_SECONDARY } } },
       scales: {
         x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
         y: { grid: { color: GRID }, ticks: { color: INK_SECONDARY, callback: (v) => formatCompact(v) } },
