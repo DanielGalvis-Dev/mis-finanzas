@@ -1,4 +1,4 @@
-import { initTokenClient, signIn, signInSilent, loadOrCreateData, saveData } from "./drive.js";
+import { initTokenClient, signIn, signInSilent, restoreSession, loadOrCreateData, saveData } from "./drive.js";
 import { state, setData } from "./state.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderDiario } from "./views/diario.js";
@@ -27,12 +27,20 @@ async function boot() {
     showSignInError("No se pudo inicializar Google Identity Services. Revisa tu conexión e inténtalo de nuevo.");
     console.error(err);
   }
-  // Google's token client requires a user gesture to open its (even instantaneous)
-  // popup - it can't be triggered automatically on page load, so there's always one
-  // click per fresh page load. What we CAN skip on that click is the full permissions
-  // screen: handleSignIn tries a silent grant first and only falls back to the full
-  // consent screen if that fails.
   els.signInBtn.addEventListener("click", handleSignIn);
+
+  // If we still have a valid cached token from a previous visit (Google tokens last
+  // ~1h), reuse it straight away - no popup, no click, no network round trip to Google.
+  if (restoreSession()) {
+    try {
+      await loadDataAndShowApp();
+      return;
+    } catch (err) {
+      console.error(err);
+      // Cached token turned out to be no good (e.g. revoked elsewhere) - fall through
+      // to the normal signed-out screen below.
+    }
+  }
 }
 
 async function handleSignIn() {

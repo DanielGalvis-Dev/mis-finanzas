@@ -4,6 +4,53 @@ let accessToken = null;
 let tokenClient = null;
 let fileId = null;
 
+// Cache the token in this browser so a page reload/reopen doesn't need a fresh
+// Google popup as long as the token is still valid (Google issues them for ~1h).
+// This is the only "persistence" possible without a backend - Google only hands out
+// a long-lived refresh token to server-side (authorization code) flows.
+const TOKEN_STORAGE_KEY = "misFinanzasToken";
+const EXPIRY_SAFETY_MARGIN_MS = 2 * 60 * 1000; // treat as expired 2 min early
+
+function saveTokenToStorage(token, expiresInSeconds) {
+  try {
+    const expiresAt = Date.now() + Number(expiresInSeconds) * 1000;
+    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+  } catch {
+    // localStorage unavailable (private mode, quota, etc.) - not fatal, just no caching.
+  }
+}
+
+function loadTokenFromStorage() {
+  try {
+    const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!raw) return null;
+    const { token, expiresAt } = JSON.parse(raw);
+    if (!token || Date.now() > expiresAt - EXPIRY_SAFETY_MARGIN_MS) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      return null;
+    }
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function clearTokenStorage() {
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Reuses a still-valid cached token, if any, without touching Google at all - no
+// popup, no network call. Returns the token or null.
+export function restoreSession() {
+  const cached = loadTokenFromStorage();
+  if (cached) accessToken = cached;
+  return cached;
+}
+
 function waitForGis() {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -30,6 +77,7 @@ export function signIn() {
     tokenClient.callback = (resp) => {
       if (resp.error) return reject(resp);
       accessToken = resp.access_token;
+      saveTokenToStorage(resp.access_token, resp.expires_in);
       resolve(accessToken);
     };
     tokenClient.requestAccessToken({ prompt: "consent" });
@@ -59,6 +107,7 @@ export function signInSilent() {
         return resolve(null);
       }
       accessToken = resp.access_token;
+      saveTokenToStorage(resp.access_token, resp.expires_in);
       resolve(accessToken);
     };
     try {
@@ -79,6 +128,7 @@ export function signOut() {
   }
   accessToken = null;
   fileId = null;
+  clearTokenStorage();
 }
 
 export function isSignedIn() {
