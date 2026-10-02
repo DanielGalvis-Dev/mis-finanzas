@@ -20,9 +20,9 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
     <div class="flex flex-col gap-2 mb-3" id="accountsList">
       ${state.data.accounts
         .map(
-          (a) => `<button type="button" class="w-full text-left px-3 py-2.5 border border-slate-700 rounded-lg hover:bg-slate-700/50 transition-colors" data-open-acc="${a.id}">
+          (a) => `<button type="button" class="w-full text-left px-3 py-2.5 border border-line rounded-xl hover:bg-line/50 transition-colors" data-open-acc="${a.id}">
           <div class="font-medium">${a.name}</div>
-          <div class="text-xs text-slate-400 mt-0.5">saldo inicial: ${currency(a.initialBalance)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
+          <div class="text-xs text-mute mt-0.5">saldo inicial: ${currency(a.initialBalance)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
         </button>`
         )
         .join("")}
@@ -33,7 +33,7 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
     <div class="flex flex-col gap-2 mb-3" id="categoriesList">
       ${state.data.categories
         .map(
-          (c) => `<button type="button" class="w-full text-left flex items-center justify-between gap-2 px-3 py-2.5 border border-slate-700 rounded-lg hover:bg-slate-700/50 transition-colors" data-open-cat="${c.id}">
+          (c) => `<button type="button" class="w-full text-left flex items-center justify-between gap-2 px-3 py-2.5 border border-line rounded-xl hover:bg-line/50 transition-colors" data-open-cat="${c.id}">
           <span class="font-medium truncate">${c.name}</span>
           <span class="${pillClass(c.kind)} shrink-0">${c.kind}</span>
         </button>`
@@ -44,14 +44,14 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
 
     <div class="${cx.sectionTitle}">Cuenta de Google</div>
     <div class="${cx.card} max-w-md">
-      <p class="mt-0 text-slate-300">Última sincronización: ${lastSaved || "—"}</p>
-      <button class="${cx.btnDanger}" id="signOutBtn">Cerrar sesión</button>
+      <p class="mt-0 mb-4 text-mute">Última sincronización: ${lastSaved || "—"}</p>
+      <button class="${cx.btnDanger} w-full sm:w-auto" id="signOutBtn">Cerrar sesión</button>
     </div>
 
     <div class="${cx.sectionTitle}">Zona de datos</div>
     <div class="${cx.card} max-w-md">
-      <p class="mt-0 text-slate-300 text-sm">Reinicia tu archivo de Drive a la plantilla vacía (<code>seed-data.json</code>: tus cuentas y categorías, sin movimientos). Borra TODOS tus movimientos actuales. Úsalo solo si quieres empezar de cero.</p>
-      <button class="${cx.btnDanger}" id="reloadSeedBtn">Reiniciar a plantilla vacía</button>
+      <p class="mt-0 mb-4 text-mute text-sm leading-relaxed">Reinicia tu archivo de Drive a la plantilla vacía (<code>seed-data.json</code>: tus cuentas y categorías, sin movimientos). Borra TODOS tus movimientos actuales. Úsalo solo si quieres empezar de cero.</p>
+      <button class="${cx.btnDanger} w-full sm:w-auto" id="reloadSeedBtn">Reiniciar a plantilla vacía</button>
     </div>
   `;
 

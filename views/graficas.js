@@ -1,9 +1,9 @@
 import { state, monthsWithData, currentMonth, savingsSeries } from "../state.js";
 import { cx } from "../ui.js";
 
-const PALETTE = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
-const INK_SECONDARY = "#c3c2b7";
-const GRID = "#2c2c2a";
+// Colors come from the CSS tokens so the charts follow the light/dark theme.
+const token = (name) => `rgb(${getComputedStyle(document.documentElement).getPropertyValue(name).trim().split(/\s+/).join(",")})`;
+const tokenAlpha = (name, a) => token(name).replace("rgb(", "rgba(").replace(")", `,${a})`);
 
 let selectedMonth = null;
 let chartCategoria = null;
@@ -14,15 +14,15 @@ export function renderGraficas(container) {
   if (!selectedMonth) selectedMonth = months.length ? months[months.length - 1] : currentMonth();
 
   container.innerHTML = `
-    <div class="flex gap-2.5 items-center flex-wrap mb-3.5">
-      <input type="month" id="chartMonthPicker" class="${cx.input} w-auto" value="${selectedMonth}" />
+    <div class="mb-6">
+      <input type="month" id="chartMonthPicker" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="${cx.card} chart-card">
-        <div class="${cx.sectionTitle} mt-0">Gasto por categoría — ${selectedMonth}</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div class="chart-card">
+        <div class="${cx.sectionTitle} ">Gasto por categoría, ${selectedMonth}</div>
         <canvas id="chartCategoria" height="260"></canvas>
       </div>
-      <div class="${cx.card} chart-card">
+      <div class="chart-card">
         <div class="${cx.sectionTitle} mt-0">Evolución del ahorro</div>
         <canvas id="chartAhorro" height="260"></canvas>
       </div>
@@ -57,8 +57,8 @@ function drawCategoriaChart(month) {
       datasets: [
         {
           data: values,
-          backgroundColor: categories.map((_, i) => PALETTE[i % PALETTE.length]),
-          borderRadius: 4,
+          backgroundColor: token("--accent"),
+          borderRadius: 6,
           maxBarThickness: 36,
         },
       ],
@@ -66,8 +66,8 @@ function drawCategoriaChart(month) {
     options: {
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
-        y: { grid: { color: GRID }, ticks: { color: INK_SECONDARY, callback: (v) => formatCompact(v) } },
+        x: { grid: { display: false }, ticks: { color: token("--mute") } },
+        y: { grid: { color: token("--line") }, ticks: { color: token("--mute"), callback: (v) => formatCompact(v) } },
       },
     },
   });
@@ -85,21 +85,21 @@ function drawAhorroChart() {
       datasets: [
         {
           data: series.map((p) => p.cumulative),
-          borderColor: PALETTE[2],
-          backgroundColor: PALETTE[2] + "33",
+          borderColor: token("--accent"),
+          backgroundColor: tokenAlpha("--accent", 0.12),
           fill: true,
           tension: 0.25,
-          pointRadius: 4,
-          pointBackgroundColor: PALETTE[2],
-          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: token("--accent"),
+          borderWidth: 1.5,
         },
       ],
     },
     options: {
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
-        y: { grid: { color: GRID }, ticks: { color: INK_SECONDARY, callback: (v) => formatCompact(v) } },
+        x: { grid: { display: false }, ticks: { color: token("--mute") } },
+        y: { grid: { color: token("--line") }, ticks: { color: token("--mute"), callback: (v) => formatCompact(v) } },
       },
     },
   });

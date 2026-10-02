@@ -146,12 +146,12 @@ async function doSave() {
 
 const SYNC_STATUS_BASE = "text-xs whitespace-nowrap";
 const SYNC_STATUS_COLOR = {
-  saving: "text-amber-400",
-  saved: "text-emerald-400",
-  error: "text-red-400",
+  saving: "text-mute",
+  saved: "text-pos",
+  error: "text-neg",
 };
 function setSyncStatus(kind, text) {
-  els.syncStatus.className = `${SYNC_STATUS_BASE} ${SYNC_STATUS_COLOR[kind] || "text-slate-400"}`;
+  els.syncStatus.className = `${SYNC_STATUS_BASE} ${SYNC_STATUS_COLOR[kind] || "text-mute"}`;
   els.syncStatus.textContent = text;
 }
 

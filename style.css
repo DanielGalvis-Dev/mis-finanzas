@@ -1,16 +1,86 @@
 [hidden] { display: none !important; }
 
+:root {
+  --bg: 246 247 245;
+  --surface: 255 255 255;
+  --ink: 22 32 28;
+  --mute: 110 120 114;
+  --line: 226 229 225;
+  --accent: 31 95 74;
+  --pos: 31 110 80;
+  --neg: 180 72 58;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 15 19 17;
+    --surface: 22 27 24;
+    --ink: 232 236 233;
+    --mute: 140 150 144;
+    --line: 40 47 43;
+    --accent: 106 190 156;
+    --pos: 106 190 156;
+    --neg: 226 120 104;
+    color-scheme: dark;
+  }
+}
+
+html { background: rgb(var(--bg)); }
+
+body {
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+}
+
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-.tab-btn.active {
-  background-color: #2563eb;
-  color: #fff;
+/* Navegación: texto simple, la pestaña activa se marca con tinta y una línea. */
+.tab-btn { position: relative; transition: color 0.15s; }
+.tab-btn.active { color: rgb(var(--ink)); }
+
+#tabs .tab-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: -1px;
+  height: 2px;
+  background: rgb(var(--accent));
+  border-radius: 2px;
 }
 
-#mobileTabs .tab-btn.active {
-  background-color: transparent;
-  color: #60a5fa;
+#mobileTabs .tab-btn.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 30%;
+  right: 30%;
+  height: 2px;
+  background: rgb(var(--accent));
+  border-radius: 0 0 2px 2px;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
 }
 
 .chart-card canvas { max-height: 320px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Nada se desborda a los lados. */
+html, body { overflow-x: clip; }
+
+/* Movil: campos de 16px (iOS no hace zoom al enfocar) y alto comodo para el pulgar. */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px !important; min-height: 2.75rem; }
+  input[type="date"], input[type="month"] { -webkit-appearance: none; appearance: none; }
+  .tab-btn { min-height: 3rem; }
+}

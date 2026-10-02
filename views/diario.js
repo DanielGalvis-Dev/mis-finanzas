@@ -19,20 +19,19 @@ export function renderDiario(container, { markDirty }) {
   const categories = state.data.categories;
 
   container.innerHTML = `
-    <div class="flex gap-2.5 items-center flex-wrap mb-3.5">
-      <input type="month" id="filterMonth" class="${cx.input} w-auto" value="${currentFilters.month}" />
-      <select id="filterAccount" class="${cx.input} w-auto">
-        <option value="">Todas las cuentas</option>
+    <div class="grid grid-cols-2 gap-2 mb-6 md:flex md:flex-wrap md:items-center md:gap-3">
+      <button class="${cx.btnPrimary} order-first col-span-2 py-3 md:order-last md:col-span-1 md:ml-auto md:py-2" id="addTxBtn">Agregar movimiento</button>
+      <input type="month" id="filterMonth" class="${cx.input} w-full md:w-auto" value="${currentFilters.month}" aria-label="Mes" />
+      <select id="filterAccount" class="${cx.input} w-full md:w-auto" aria-label="Cuenta">
+        <option value="">Cuentas</option>
         ${accounts.map((a) => `<option value="${a.id}" ${currentFilters.accountId === a.id ? "selected" : ""}>${a.name}</option>`).join("")}
       </select>
-      <select id="filterCategory" class="${cx.input} w-auto">
-        <option value="">Todas las categorías</option>
+      <select id="filterCategory" class="${cx.input} col-span-2 w-full md:col-span-1 md:w-auto" aria-label="Categoría">
+        <option value="">Categorías</option>
         ${categories.map((c) => `<option value="${c.id}" ${currentFilters.categoryId === c.id ? "selected" : ""}>${c.name}</option>`).join("")}
       </select>
-      <div class="flex-1"></div>
-      <button class="${cx.btn} ${cx.btnPrimary}" id="addTxBtn">+ Agregar movimiento</button>
     </div>
-    <div class="${cx.card}">
+    <div>
       ${rows.length === 0 ? `<div class="${cx.emptyState}">No hay movimientos con estos filtros.</div>` : renderTransactionList(rows)}
     </div>
   `;

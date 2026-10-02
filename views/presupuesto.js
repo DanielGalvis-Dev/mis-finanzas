@@ -15,12 +15,12 @@ export function renderPresupuesto(container, { markDirty }) {
   );
 
   container.innerHTML = `
-    <div class="flex gap-2.5 items-center flex-wrap mb-3.5">
-      <input type="month" id="monthPicker" class="${cx.input} w-auto" value="${selectedMonth}" />
+    <div class="mb-6">
+      <input type="month" id="monthPicker" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
     </div>
-    <div class="${cx.card}">
-      <div class="hidden sm:block">${renderDesktopTable(rows, totals)}</div>
-      <div class="sm:hidden divide-y divide-slate-700">${renderMobileCards(rows, totals)}</div>
+    <div >
+      <div class="hidden md:block">${renderDesktopTable(rows, totals)}</div>
+      <div class="md:hidden divide-y divide-line">${renderMobileCards(rows, totals)}</div>
     </div>
   `;
 
@@ -51,7 +51,7 @@ function renderDesktopTable(rows, totals) {
             (r) => `<tr>
             <td class="${cx.td}">${r.category.name}</td>
             <td class="${cx.td}"><span class="${pillClass(r.category.kind)}">${r.category.kind}</span></td>
-            <td class="${cx.td}"><input type="number" step="1" class="budget-input ${cx.input} w-32" data-cat="${r.category.id}" value="${r.estimated}" /></td>
+            <td class="${cx.td}"><input type="number" step="1" class="budget-input ${cx.input} w-28" data-cat="${r.category.id}" value="${r.estimated}" /></td>
             <td class="${cx.td} ${amountClass(r.real)}">${currency(r.real)}</td>
             <td class="${cx.td} ${amountClass(r.balance)}">${currency(r.balance)}</td>
           </tr>`
@@ -60,10 +60,10 @@ function renderDesktopTable(rows, totals) {
       </tbody>
       <tfoot>
         <tr class="font-bold">
-          <td class="${cx.td} border-t-2 border-slate-600">TOTALES</td><td class="${cx.td} border-t-2 border-slate-600"></td>
-          <td class="${cx.td} border-t-2 border-slate-600">${currency(totals.estimated)}</td>
-          <td class="${cx.td} border-t-2 border-slate-600 ${amountClass(totals.real)}">${currency(totals.real)}</td>
-          <td class="${cx.td} border-t-2 border-slate-600 ${amountClass(totals.balance)}">${currency(totals.balance)}</td>
+          <td class="${cx.td} border-t-2 border-ink/30">TOTALES</td><td class="${cx.td} border-t-2 border-ink/30"></td>
+          <td class="${cx.td} border-t-2 border-ink/30">${currency(totals.estimated)}</td>
+          <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(totals.real)}">${currency(totals.real)}</td>
+          <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(totals.balance)}">${currency(totals.balance)}</td>
         </tr>
       </tfoot>
     </table>
@@ -82,15 +82,15 @@ function renderMobileCards(rows, totals) {
       </div>
       <div class="grid grid-cols-3 gap-2">
         <div>
-          <div class="text-xs text-slate-400 mb-1">Estimado</div>
-          <input type="number" step="1" class="budget-input ${cx.input} text-sm px-2 py-1.5" data-cat="${r.category.id}" value="${r.estimated}" />
+          <div class="text-xs text-mute mb-1">Estimado</div>
+          <input type="number" step="1" class="budget-input ${cx.input} px-2 py-1.5" data-cat="${r.category.id}" value="${r.estimated}" />
         </div>
         <div>
-          <div class="text-xs text-slate-400 mb-1">Real</div>
+          <div class="text-xs text-mute mb-1">Real</div>
           <div class="font-medium ${amountClass(r.real)}">${currency(r.real)}</div>
         </div>
         <div>
-          <div class="text-xs text-slate-400 mb-1">Balance</div>
+          <div class="text-xs text-mute mb-1">Balance</div>
           <div class="font-medium ${amountClass(r.balance)}">${currency(r.balance)}</div>
         </div>
       </div>
@@ -104,9 +104,9 @@ function renderMobileCards(rows, totals) {
     <div class="py-3">
       <div class="font-bold mb-2">TOTALES</div>
       <div class="grid grid-cols-3 gap-2 text-sm">
-        <div><div class="text-xs text-slate-400 mb-1">Estimado</div><div class="font-medium">${currency(totals.estimated)}</div></div>
-        <div><div class="text-xs text-slate-400 mb-1">Real</div><div class="font-medium ${amountClass(totals.real)}">${currency(totals.real)}</div></div>
-        <div><div class="text-xs text-slate-400 mb-1">Balance</div><div class="font-medium ${amountClass(totals.balance)}">${currency(totals.balance)}</div></div>
+        <div><div class="text-xs text-mute mb-1">Estimado</div><div class="font-medium">${currency(totals.estimated)}</div></div>
+        <div><div class="text-xs text-mute mb-1">Real</div><div class="font-medium ${amountClass(totals.real)}">${currency(totals.real)}</div></div>
+        <div><div class="text-xs text-mute mb-1">Balance</div><div class="font-medium ${amountClass(totals.balance)}">${currency(totals.balance)}</div></div>
       </div>
     </div>
   `;

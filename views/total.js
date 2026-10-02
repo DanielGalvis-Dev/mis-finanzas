@@ -6,9 +6,9 @@ export function renderTotal(container) {
   const total = rows.reduce((s, r) => s + r.real, 0);
 
   container.innerHTML = `
-    <div class="${cx.card}">
-      <div class="hidden sm:block">${renderDesktopTable(rows, total)}</div>
-      <div class="sm:hidden divide-y divide-slate-700">${renderMobileCards(rows, total)}</div>
+    <div>
+      <div class="hidden md:block">${renderDesktopTable(rows, total)}</div>
+      <div class="md:hidden divide-y divide-line">${renderMobileCards(rows, total)}</div>
     </div>
   `;
 }
@@ -33,8 +33,8 @@ function renderDesktopTable(rows, total) {
       </tbody>
       <tfoot>
         <tr class="font-bold">
-          <td class="${cx.td} border-t-2 border-slate-600">TOTALES</td><td class="${cx.td} border-t-2 border-slate-600"></td>
-          <td class="${cx.td} border-t-2 border-slate-600 ${amountClass(total)}">${currency(total)}</td>
+          <td class="${cx.td} border-t-2 border-ink/30">TOTALES</td><td class="${cx.td} border-t-2 border-ink/30"></td>
+          <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(total)}">${currency(total)}</td>
         </tr>
       </tfoot>
     </table>
