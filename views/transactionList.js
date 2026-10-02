@@ -12,7 +12,7 @@ import { cx, amountClass, pillClass } from "../ui.js";
 
 // Compact rows at every width (no horizontal scrolling). Tapping a row opens the edit
 // modal, which has full detail plus a Borrar button.
-export function renderTransactionList(rows, { showActions = true } = {}) {
+export function renderTransactionList(rows) {
   if (rows.length === 0) return `<div class="${cx.emptyState}">No hay movimientos.</div>`;
   return `<div class="divide-y divide-line border-y border-line">${renderRows(rows)}</div>`;
 }

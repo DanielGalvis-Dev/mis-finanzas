@@ -35,7 +35,7 @@ export function renderDashboard(container, { markDirty }) {
       <button class="${cx.btnPrimary} ${cx.btnSmall}" id="quickAddBtn">Agregar movimiento</button>
     </div>
     <div>
-      ${renderTransactionList(recent, { showActions: false })}
+      ${renderTransactionList(recent)}
     </div>
   `;
 
