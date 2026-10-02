@@ -22,20 +22,6 @@ export function renderTransactionList(rows, { showActions = true } = {}) {
 export function bindTransactionList(container, rows, { markDirty, onRerender }) {
   const byId = Object.fromEntries(rows.map((t) => [t.id, t]));
 
-  container.querySelectorAll("[data-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openTransactionForm({ tx: byId[btn.dataset.edit], onSaved: markDirty, onRerender });
-    });
-  });
-  container.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (confirmDialog("¿Borrar este movimiento?")) {
-        deleteTransaction(btn.dataset.delete);
-        markDirty();
-        onRerender();
-      }
-    });
-  });
   container.querySelectorAll("[data-open]").forEach((row) => {
     row.addEventListener("click", () => {
       openTransactionForm({ tx: byId[row.dataset.open], onSaved: markDirty, onRerender });
