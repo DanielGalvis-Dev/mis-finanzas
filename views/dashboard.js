@@ -16,7 +16,7 @@ export function renderDashboard(container, { markDirty }) {
       <div class="text-[2.6rem] leading-none sm:text-7xl font-light tracking-tight mt-2 ${amountClass(totalBalance())}">${currency(totalBalance())}</div>
       ${
         hasUsd
-          ? `<div class="text-xs text-mute mt-3">Las cuentas en USD se valoran a ${usdValuationRate() ? currency(usdValuationRate()) + " por USD (tasa de venta)" : "una tasa aún sin definir: configúrala en Ajustes"}.</div>`
+          ? `<div class="text-xs text-mute mt-3">Las cuentas en USD se valoran a ${usdValuationRate() ? currency(usdValuationRate(), "COP", 2) + " por USD (tasa de venta)" : "una tasa aún sin definir: configúrala en Ajustes"}.</div>`
           : ""
       }
     </section>

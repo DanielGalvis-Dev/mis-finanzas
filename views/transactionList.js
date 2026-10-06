@@ -13,7 +13,7 @@ import {
   usdValuationRate,
 } from "../state.js";
 import { openModal, confirmDialog, alertDialog } from "../modal.js";
-import { cx, amountClass, pillClass } from "../ui.js";
+import { cx, amountClass, pillClass, fmtDate } from "../ui.js";
 
 // Compact rows at every width (no horizontal scrolling). Tapping a row opens the edit
 // modal, which has full detail plus a Borrar button.
@@ -52,7 +52,7 @@ function renderRows(rows) {
       <button type="button" class="w-full text-left py-3.5 flex items-center hover:bg-line/30 transition-colors cursor-pointer justify-between gap-3" data-open="${t.id}">
         <div class="min-w-0">
           <div class="font-medium truncate">${t.description || (cat ? cat.name : "Movimiento")}</div>
-          <div class="text-xs text-mute truncate">${t.date} · ${acc ? acc.name : "—"}</div>
+          <div class="text-xs text-mute truncate">${fmtDate(t.date)} · ${acc ? acc.name : "—"}</div>
         </div>
         <div class="text-right shrink-0">
           <div class="font-semibold ${amountClass(t.amount)}">${currency(t.amount, acc?.currency)}</div>

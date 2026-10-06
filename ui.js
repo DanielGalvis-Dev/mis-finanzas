@@ -4,9 +4,9 @@
 export const cx = {
   card: "bg-surface border border-line rounded-2xl p-5",
   sectionTitle: "text-sm font-medium text-mute mt-10 mb-3 first:mt-0",
-  btn: "border border-line bg-transparent text-ink px-4 py-2 rounded-full text-sm font-medium cursor-pointer hover:bg-line/50 transition-colors",
-  btnPrimary: "border border-accent bg-accent text-surface px-4 py-2 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity",
-  btnDanger: "border border-neg/50 bg-transparent text-neg px-4 py-2 rounded-full text-sm font-medium cursor-pointer hover:bg-neg/10 transition-colors",
+  btn: "border border-line bg-transparent text-ink px-4 py-2 max-md:min-h-11 rounded-full text-sm font-medium cursor-pointer hover:bg-line/50 transition-colors",
+  btnPrimary: "border border-accent bg-accent text-surface px-4 py-2 max-md:min-h-11 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity",
+  btnDanger: "border border-neg/50 bg-transparent text-neg px-4 py-2 max-md:min-h-11 rounded-full text-sm font-medium cursor-pointer hover:bg-neg/10 transition-colors",
   btnSmall: "px-3 py-1 text-xs",
   input: "w-full px-3 py-2 rounded-xl border border-line bg-surface text-ink placeholder-mute/70 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent",
   label: "block text-xs text-mute mb-1.5",
@@ -30,4 +30,13 @@ export function pillClass(kind) {
 
 export function amountClass(n) {
   return Number(n) < 0 ? cx.negative : cx.positive;
+}
+
+// "2026-10-05" -> "5 oct" (corto, para listas); con anio si no es el actual.
+export function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return iso;
+  const sameYear = d.getUTCFullYear() === new Date().getFullYear();
+  const s = d.toLocaleDateString("es-CO", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), timeZone: "UTC" });
+  return s.replace(/ de /g, " ").replace(/\./g, "");
 }

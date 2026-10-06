@@ -18,7 +18,7 @@ function renderDesktopTable(rows, total) {
     <div class="${cx.tableWrap}">
     <table class="w-full text-sm">
       <thead><tr>
-        <th class="${cx.th}">Categoría</th><th class="${cx.th}">Tipo</th><th class="${cx.th}">Real acumulado</th>
+        <th scope="col" class="${cx.th}">Categoría</th><th scope="col" class="${cx.th}">Tipo</th><th scope="col" class="${cx.th}">Real acumulado</th>
       </tr></thead>
       <tbody>
         ${rows

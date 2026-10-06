@@ -119,7 +119,13 @@ function showApp() {
 
 function switchView(view) {
   currentView = view;
-  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    const on = btn.dataset.view === view;
+    btn.classList.toggle("active", on);
+    if (on) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
+    if (on && btn.closest("#tabs")) document.getElementById("viewTitle").textContent = btn.textContent.trim();
+  });
   document.querySelectorAll("#appView .view").forEach((sec) => (sec.hidden = sec.id !== `view-${view}`));
   renderCurrentView();
 }

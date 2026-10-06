@@ -2,8 +2,8 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   const root = document.getElementById("modalRoot");
   root.innerHTML = `
     <div class="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] sm:p-4" id="modalBackdrop">
-      <div class="bg-surface border border-line rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] w-full max-w-md max-h-[92vh] overflow-y-auto" role="dialog" aria-modal="true">
-        <h2 class="text-lg font-medium mb-5">${title}</h2>
+      <div class="bg-surface border border-line rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] w-full max-w-md max-h-[92vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1" id="modalDialog">
+        <h2 id="modalTitle" class="text-lg font-medium mb-5">${title}</h2>
         <form id="modalForm">
           ${bodyHTML}
           <div class="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 mt-6">
@@ -29,7 +29,36 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   `;
   const backdrop = document.getElementById("modalBackdrop");
   const form = document.getElementById("modalForm");
-  const close = () => { root.innerHTML = ""; };
+  const dialog = document.getElementById("modalDialog");
+  const opener = document.activeElement;
+  linkLabels(form);
+
+  // Teclado: Escape cierra, Tab se queda dentro del dialogo y al cerrar el foco vuelve a donde estaba.
+  const onKey = (e) => {
+    if (document.querySelector(".swal2-container")) return; // un aviso de SweetAlert2 manda sobre el modal
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "Tab") {
+      const items = [...dialog.querySelectorAll("button, input, select, textarea, a[href]")].filter((el) => !el.disabled && el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    root.innerHTML = "";
+    if (opener && opener.isConnected) opener.focus();
+  };
+  document.addEventListener("keydown", onKey);
 
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
   document.getElementById("modalCancel").addEventListener("click", close);
@@ -44,6 +73,20 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   }
 
   if (onMount) onMount(form);
+  // El foco entra al dialogo (sin abrir el teclado del celular); el primer Tab llega al primer campo.
+  dialog.focus();
+}
+
+// Enlaza cada <label> con el campo que le sigue (for/id) para que los lectores de pantalla lo anuncien.
+function linkLabels(form) {
+  let n = 0;
+  form.querySelectorAll("label").forEach((label) => {
+    if (label.htmlFor) return;
+    const control = label.parentElement?.querySelector("input, select, textarea");
+    if (!control) return;
+    if (!control.id) control.id = "fld_" + control.name + "_" + n++;
+    label.htmlFor = control.id;
+  });
 }
 
 // Dialogos con SweetAlert2 (vendor/, se carga antes de app.js). Si no estuviera disponible,

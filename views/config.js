@@ -34,8 +34,8 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
 
     <div class="${cx.sectionTitle}">Tasa de cambio USD/COP</div>
     <div class="${cx.card} max-w-md grid grid-cols-2 gap-3" id="ratesCard">
-      <div><div class="${cx.label}">Venta</div><div class="text-xl font-light" id="rateSellVal">${rates.sell ? currency(rates.sell) : "—"}</div></div>
-      <div><div class="${cx.label}">Compra</div><div class="text-xl font-light" id="rateBuyVal">${rates.buy ? currency(rates.buy) : "—"}</div></div>
+      <div><div class="${cx.label}">Venta</div><div class="text-xl font-light" id="rateSellVal">${rates.sell ? currency(rates.sell, "COP", 2) : "—"}</div></div>
+      <div><div class="${cx.label}">Compra</div><div class="text-xl font-light" id="rateBuyVal">${rates.buy ? currency(rates.buy, "COP", 2) : "—"}</div></div>
     </div>
 
     <div class="${cx.sectionTitle}">Categorías</div>

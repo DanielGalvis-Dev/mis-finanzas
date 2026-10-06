@@ -16,7 +16,7 @@ export function renderPresupuesto(container, { markDirty }) {
 
   container.innerHTML = `
     <div class="mb-6">
-      <input type="month" id="monthPicker" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
+      <input type="month" id="monthPicker" aria-label="Mes" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
     </div>
     <div >
       <div class="hidden md:block">${renderDesktopTable(rows, totals)}</div>
@@ -33,7 +33,10 @@ export function renderPresupuesto(container, { markDirty }) {
     input.addEventListener("change", (e) => {
       setBudget(selectedMonth, e.target.dataset.cat, e.target.value);
       markDirty();
+      // Al re-dibujar se pierde el foco: se devuelve al campo que tenia (el siguiente al pulsar Tab).
+      const next = document.activeElement?.classList?.contains("budget-input") ? document.activeElement.dataset.cat : null;
       renderPresupuesto(container, { markDirty });
+      if (next) [...container.querySelectorAll(`.budget-input[data-cat="${next}"]`)].find((el) => el.offsetParent !== null)?.focus();
     });
   });
 }
@@ -43,7 +46,7 @@ function renderDesktopTable(rows, totals) {
     <div class="${cx.tableWrap}">
     <table class="w-full text-sm">
       <thead><tr>
-        <th class="${cx.th}">Categoría</th><th class="${cx.th}">Tipo</th><th class="${cx.th}">Estimado</th><th class="${cx.th}">Real</th><th class="${cx.th}">Balance</th>
+        <th scope="col" class="${cx.th}">Categoría</th><th scope="col" class="${cx.th}">Tipo</th><th scope="col" class="${cx.th}">Estimado</th><th scope="col" class="${cx.th}">Real</th><th scope="col" class="${cx.th}">Balance</th>
       </tr></thead>
       <tbody>
         ${rows
@@ -51,7 +54,7 @@ function renderDesktopTable(rows, totals) {
             (r) => `<tr>
             <td class="${cx.td}">${r.category.name}</td>
             <td class="${cx.td}"><span class="${pillClass(r.category.kind)}">${r.category.kind}</span></td>
-            <td class="${cx.td}"><input type="number" step="1" class="budget-input ${cx.input} w-28" data-cat="${r.category.id}" value="${r.estimated}" /></td>
+            <td class="${cx.td}"><input type="number" step="1" aria-label="Estimado de ${r.category.name}" class="budget-input ${cx.input} w-28" data-cat="${r.category.id}" value="${r.estimated}" /></td>
             <td class="${cx.td} ${amountClass(r.real)}">${currency(r.real)}</td>
             <td class="${cx.td} ${amountClass(r.balance)}">${currency(r.balance)}</td>
           </tr>`
@@ -83,7 +86,7 @@ function renderMobileCards(rows, totals) {
       <div class="grid grid-cols-3 gap-2">
         <div>
           <div class="text-xs text-mute mb-1">Estimado</div>
-          <input type="number" step="1" class="budget-input ${cx.input} px-2 py-1.5" data-cat="${r.category.id}" value="${r.estimated}" />
+          <input type="number" step="1" aria-label="Estimado de ${r.category.name}" class="budget-input ${cx.input} px-2 py-1.5" data-cat="${r.category.id}" value="${r.estimated}" />
         </div>
         <div>
           <div class="text-xs text-mute mb-1">Real</div>

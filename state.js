@@ -29,9 +29,8 @@ function uid(prefix) {
   return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-export function currency(n, cur = BASE_CURRENCY) {
+export function currency(n, cur = BASE_CURRENCY, digits = cur === "COP" ? 0 : 2) {
   const v = Number(n) || 0;
-  const digits = cur === "COP" ? 0 : 2;
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: cur, currencyDisplay: "code", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
 }
 

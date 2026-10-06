@@ -1,4 +1,4 @@
-import { state, monthsWithData, currentMonth, savingsSeries, txBase } from "../state.js";
+import { state, monthsWithData, currentMonth, savingsSeries, txBase, currency } from "../state.js";
 import { cx } from "../ui.js";
 
 // Colors come from the CSS tokens so the charts follow the light/dark theme.
@@ -15,16 +15,16 @@ export function renderGraficas(container) {
 
   container.innerHTML = `
     <div class="mb-6">
-      <input type="month" id="chartMonthPicker" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
+      <input type="month" id="chartMonthPicker" aria-label="Mes" class="${cx.input} w-full sm:w-auto" value="${selectedMonth}" />
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
       <div class="chart-card">
         <div class="${cx.sectionTitle} ">Gasto por categoría, ${selectedMonth}</div>
-        <canvas id="chartCategoria" height="260"></canvas>
+        <canvas id="chartCategoria" height="260" role="img"></canvas>
       </div>
       <div class="chart-card">
         <div class="${cx.sectionTitle} mt-0">Evolución del ahorro</div>
-        <canvas id="chartAhorro" height="260"></canvas>
+        <canvas id="chartAhorro" height="260" role="img"></canvas>
       </div>
     </div>
   `;
@@ -50,6 +50,7 @@ function drawCategoriaChart(month) {
 
   if (chartCategoria) chartCategoria.destroy();
   const ctx = document.getElementById("chartCategoria");
+  ctx.setAttribute("aria-label", `Gasto por categoría en ${month}: ` + (categories.map((c, i) => (values[i] ? `${c.name} ${currency(values[i])}` : null)).filter(Boolean).join(", ") || "sin gastos"));
   chartCategoria = new Chart(ctx, {
     type: "bar",
     data: {
@@ -78,6 +79,7 @@ function drawAhorroChart() {
 
   if (chartAhorro) chartAhorro.destroy();
   const ctx = document.getElementById("chartAhorro");
+  ctx.setAttribute("aria-label", "Evolución del ahorro: " + (series.length ? `de ${currency(series[0].cumulative)} en ${series[0].month} a ${currency(series.at(-1).cumulative)} en ${series.at(-1).month}` : "sin datos"));
   chartAhorro = new Chart(ctx, {
     type: "line",
     data: {

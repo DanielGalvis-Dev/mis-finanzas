@@ -17,9 +17,9 @@
 <!-- CSS critico inline: hasta que los estilos reales cargan solo se ve el splash (nunca HTML sin estilos). -->
 <style>
   html { background: #F6F7F5; }
-  @media (prefers-color-scheme: dark) { html { background: #0F1311; } }
+  @media (prefers-color-scheme: dark) { html { background: #0F1311; }  }
   html:not(.ready) #app, html:not(.ready) #modalRoot { display: none; }
-  #splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font: 500 1rem system-ui, sans-serif; color: #6E7872; letter-spacing: -0.005em; }
+  #splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font: 500 1rem system-ui, sans-serif; color: CanvasText; letter-spacing: -0.005em; }
   html.ready #splash { display: none; }
 </style>
 <link rel="stylesheet" href="tailwind.css" />
@@ -61,6 +61,7 @@
   </main>
 
   <main id="appView" class="flex-1 px-5 sm:px-8 py-8 pb-28 md:pb-10 max-w-3xl w-full mx-auto" hidden>
+    <h1 id="viewTitle" class="sr-only" tabindex="-1" aria-live="polite"></h1>
     <section id="view-dashboard" class="view"></section>
     <section id="view-diario" class="view" hidden></section>
     <section id="view-presupuesto" class="view" hidden></section>
