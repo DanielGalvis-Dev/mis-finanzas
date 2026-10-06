@@ -9,9 +9,7 @@ import {
   deleteCategory,
   CURRENCIES,
   getRates,
-  setRates,
 } from "../state.js";
-import { fetchMarketRate } from "../fx.js";
 import { openModal, confirmDialog, alertDialog } from "../modal.js";
 import { signOut, saveData } from "../drive.js";
 import { cx, pillClass } from "../ui.js";
@@ -34,21 +32,10 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
     </div>
     <button class="${cx.btn}" id="addAccBtn">+ Agregar cuenta</button>
 
-    <div class="${cx.sectionTitle}">Tasas de cambio USD/COP</div>
-    <div class="${cx.card} max-w-md" id="ratesCard">
-      <p class="mt-0 mb-4 text-mute text-sm leading-relaxed">Ingresa las tasas que ves en ARQ (COP por 1 USD). Los saldos en USD se valoran con la tasa de <b>venta</b>.</p>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="${cx.label}">Venta ARQ (USD→COP)</label><input type="number" step="0.01" min="0" id="rateSell" class="${cx.input}" value="${rates.sell || ""}" /></div>
-        <div><label class="${cx.label}">Compra ARQ (COP→USD)</label><input type="number" step="0.01" min="0" id="rateBuy" class="${cx.input}" value="${rates.buy || ""}" /></div>
-      </div>
-      <div class="text-xs text-mute mt-4 leading-relaxed" id="marketRef">Referencia de mercado: ${rates.marketRef ? currency(rates.marketRef) + " por USD" : "—"}${rates.updatedAt ? " · " + new Date(rates.updatedAt).toLocaleString("es-CO") : ""}</div>
-      <div class="flex flex-wrap gap-2 mt-3">
-        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="refreshRate">Actualizar referencia</button>
-        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="useRefSell">Usar como venta</button>
-        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="useRefBuy">Usar como compra</button>
-      </div>
-      <p class="text-xs text-mute mt-3" id="rateMsg"></p>
-      <p class="text-[11px] text-mute mt-2">Referencia: <a class="underline" href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a></p>
+    <div class="${cx.sectionTitle}">Tasa de cambio USD/COP</div>
+    <div class="${cx.card} max-w-md grid grid-cols-2 gap-3" id="ratesCard">
+      <div><div class="${cx.label}">Venta</div><div class="text-xl font-light" id="rateSellVal">${rates.sell ? currency(rates.sell) : "—"}</div></div>
+      <div><div class="${cx.label}">Compra</div><div class="text-xl font-light" id="rateBuyVal">${rates.buy ? currency(rates.buy) : "—"}</div></div>
     </div>
 
     <div class="${cx.sectionTitle}">Categorías</div>
@@ -84,41 +71,6 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
       openAccountForm({ acc, onSaved: markDirty, onRerender: rerender });
     })
   );
-
-  const q = (id) => container.querySelector(id);
-  const msg = (t) => (q("#rateMsg").textContent = t);
-  const saveManual = () => {
-    const clean = (v) => Math.max(0, Number(v) || 0);
-    setRates({ sell: clean(q("#rateSell").value), buy: clean(q("#rateBuy").value) });
-    q("#rateSell").value = getRates().sell || "";
-    q("#rateBuy").value = getRates().buy || "";
-    markDirty();
-  };
-  q("#rateSell").addEventListener("change", saveManual);
-  q("#rateBuy").addEventListener("change", saveManual);
-  const refresh = async (force) => {
-    try {
-      const m = await fetchMarketRate({ force });
-      setRates({ marketRef: m.rate, updatedAt: m.updatedAt });
-      markDirty();
-      q("#marketRef").textContent = `Referencia de mercado: ${currency(m.rate)} por USD · ${new Date(m.updatedAt).toLocaleString("es-CO")}`;
-      msg("");
-      return m.rate;
-    } catch {
-      msg("No se pudo consultar la tasa de mercado (sin conexión). Usa la última guardada o escribe la de ARQ.");
-      return 0;
-    }
-  };
-  q("#refreshRate").addEventListener("click", () => refresh(true));
-  const useRef = (field, input) => async () => {
-    const r = getRates().marketRef || (await refresh(false));
-    if (!r) return;
-    setRates({ [field]: r });
-    q(input).value = r;
-    markDirty();
-  };
-  q("#useRefSell").addEventListener("click", useRef("sell", "#rateSell"));
-  q("#useRefBuy").addEventListener("click", useRef("buy", "#rateBuy"));
 
   container.querySelector("#addCatBtn").addEventListener("click", () => openCategoryForm({ onSaved: markDirty, onRerender: rerender }));
   container.querySelectorAll("[data-open-cat]").forEach((btn) =>

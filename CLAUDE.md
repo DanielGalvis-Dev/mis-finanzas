@@ -31,8 +31,10 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
   visible — nunca pongas aquí un `client_secret`).
 - `drive.js` — login (Google Identity Services) + leer/crear/actualizar el archivo
   `finanzas-data.json` en el Drive del usuario.
-- `fx.js` — tasa de mercado USD/COP de referencia (open.er-api.com, sin key, CORS; cache
-  en localStorage). ARQ no tiene API pública de compra/venta: esas tasas se escriben a mano en Ajustes.
+- `fx.js` — tasa USD/COP automática: toma la tasa de mercado de fawazahmed0/currency-api (currency-api.pages.dev, respaldo
+  jsDelivr que puede venir con 1 día de atraso; gratis, CORS, 1 actualización/día) y aplica el spread de ARQ (±0,4348 %, calibrado el 06/10/2026 con compra 3201,43 /
+  venta 3173,71; si ARQ cambia su margen, ajusta `ARQ_SPREAD`). `app.js` la consulta al abrir y cada minuto.
+  ARQ no tiene API pública.
 - `state.js` — modelo de datos en memoria + todos los cálculos (balances, presupuesto,
   totales, serie de ahorro).
 - `ui.js` — constantes de clases Tailwind reutilizables (`cx.card`, `cx.btn`, etc.) y
@@ -49,7 +51,7 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 { meta, accounts[], categories[], transactions[], budgets[], transfers[] }
 ```
 
-- **meta**: `{ ..., baseCurrency: "COP", rates: { USD_COP: { buy, sell, marketRef, updatedAt } } }`.
+- **meta**: `{ ..., baseCurrency: "COP", rates (se refrescan solas): { USD_COP: { buy, sell, marketRef, updatedAt } } }`.
   `sell` = COP que recibes al convertir 1 USD (venta ARQ); `buy` = COP que pagas por 1 USD.
   Los saldos USD se valoran en COP con `sell` (`usdValuationRate()`).
 - **accounts**: `{ id, name, type, currency, initialBalance, creditLimit? }`. `currency` ∈ COP/USD

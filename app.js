@@ -1,5 +1,6 @@
 import { initTokenClient, signIn, signInSilent, restoreSession, loadOrCreateData, saveData } from "./drive.js";
-import { state, setData } from "./state.js";
+import { state, setData, setRates, getRates } from "./state.js";
+import { fetchRates, REFRESH_MS } from "./fx.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderDiario } from "./views/diario.js";
 import { renderPresupuesto } from "./views/presupuesto.js";
@@ -68,6 +69,31 @@ async function loadDataAndShowApp() {
   showApp();
   setSyncStatus("saved", created ? "Archivo creado en Drive" : "Sincronizado");
   switchView("dashboard");
+  startRateUpdates();
+}
+
+// Tasa USD/COP automatica: al abrir y cada minuto mientras la app esta visible. Se actualiza
+// en memoria y viaja a Drive con el siguiente guardado (no se guarda cada minuto solo por esto).
+let rateTimer = null;
+async function updateRates() {
+  if (document.hidden || !state.data) return;
+  try {
+    const r = await fetchRates();
+    const prev = getRates();
+    const changed = r.buy !== prev.buy || r.sell !== prev.sell;
+    setRates(r);
+    // No redibujar si hay un formulario o dialogo abierto: se perderia lo que el usuario escribe.
+    const busy = document.getElementById("modalRoot").children.length || document.querySelector(".swal2-container");
+    if (changed && !busy) renderCurrentView();
+  } catch {
+    // Sin red: se conserva la ultima tasa guardada.
+  }
+}
+function startRateUpdates() {
+  updateRates();
+  if (rateTimer) return;
+  rateTimer = setInterval(updateRates, REFRESH_MS);
+  document.addEventListener("visibilitychange", () => !document.hidden && updateRates());
 }
 
 function showSignInError(msg) {
