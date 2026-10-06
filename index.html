@@ -6,34 +6,34 @@
 <meta name="color-scheme" content="light dark" />
 <meta name="theme-color" content="#F6F7F5" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1311" media="(prefers-color-scheme: dark)" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Finanzas" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <title>Mis Finanzas</title>
+<!-- CSS critico inline: hasta que los estilos reales cargan solo se ve el splash (nunca HTML sin estilos). -->
+<style>
+  html { background: #F6F7F5; }
+  @media (prefers-color-scheme: dark) { html { background: #0F1311; } }
+  html:not(.ready) #app, html:not(.ready) #modalRoot { display: none; }
+  #splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font: 500 1rem system-ui, sans-serif; color: #6E7872; letter-spacing: -0.005em; }
+  html.ready #splash { display: none; }
+</style>
+<link rel="stylesheet" href="tailwind.css" />
+<link rel="stylesheet" href="style.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css" />
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          bg: "rgb(var(--bg) / <alpha-value>)",
-          surface: "rgb(var(--surface) / <alpha-value>)",
-          ink: "rgb(var(--ink) / <alpha-value>)",
-          mute: "rgb(var(--mute) / <alpha-value>)",
-          line: "rgb(var(--line) / <alpha-value>)",
-          accent: "rgb(var(--accent) / <alpha-value>)",
-          pos: "rgb(var(--pos) / <alpha-value>)",
-          neg: "rgb(var(--neg) / <alpha-value>)",
-        },
-      },
-    },
-  };
-</script>
+<!-- Fuente no bloqueante: si no llega, se usa la del sistema. -->
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script src="vendor/chart.umd.min.js" defer></script>
 </head>
 <body class="bg-bg text-ink min-h-screen">
+<div id="splash">Mis finanzas</div>
+<div id="styleProbe" class="fixed" hidden></div>
 <div id="app" class="min-h-screen flex flex-col">
 
   <header class="flex items-center justify-between md:justify-start gap-3 md:gap-6 px-5 sm:px-8 h-14 bg-bg border-b border-line sticky top-0 z-20">
@@ -81,6 +81,21 @@
 
 <div id="modalRoot"></div>
 
+<script>
+  // Muestra la app solo cuando tailwind.css + style.css ya aplicaron (o tras 4 s, para no quedar en blanco).
+  (function () {
+    var root = document.documentElement, t0 = Date.now();
+    function styled() {
+      // --bg viene de style.css y "position: fixed" de tailwind.css: si ambos aplican, los estilos cargaron.
+      return getComputedStyle(root).getPropertyValue("--bg").trim() !== "" && getComputedStyle(document.getElementById("styleProbe")).position === "fixed";
+    }
+    function tick() {
+      if (styled() || Date.now() - t0 > 4000) root.classList.add("ready");
+      else requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

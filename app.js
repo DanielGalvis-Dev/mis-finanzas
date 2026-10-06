@@ -155,4 +155,9 @@ function setSyncStatus(kind, text) {
   els.syncStatus.textContent = text;
 }
 
+// PWA: el service worker guarda el shell para abrir rapido incluso con datos moviles lentos.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW no registrado", err)));
+}
+
 boot();

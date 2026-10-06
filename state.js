@@ -3,8 +3,19 @@ export const state = {
   dirty: false,
 };
 
+export const BASE_CURRENCY = "COP";
+export const CURRENCIES = ["COP", "USD"];
+
 export function setData(data) {
   data.transfers = data.transfers || [];
+  // Archivos viejos de Drive no traen moneda: todo es COP y sin tasas.
+  data.meta = data.meta || {};
+  data.meta.baseCurrency = BASE_CURRENCY;
+  data.meta.rates = data.meta.rates || {};
+  data.meta.rates.USD_COP = { buy: 0, sell: 0, marketRef: 0, updatedAt: null, ...data.meta.rates.USD_COP };
+  data.accounts.forEach((a) => {
+    if (!CURRENCIES.includes(a.currency)) a.currency = BASE_CURRENCY;
+  });
   state.data = data;
 }
 
@@ -12,9 +23,35 @@ function uid(prefix) {
   return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-export function currency(n) {
+export function currency(n, cur = BASE_CURRENCY) {
   const v = Number(n) || 0;
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v);
+  const digits = cur === "COP" ? 0 : 2;
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: cur, currencyDisplay: cur === "COP" ? "symbol" : "code", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
+}
+
+// --- Monedas / tasas ---
+export function getRates() {
+  return state.data.meta.rates.USD_COP;
+}
+export function setRates(patch) {
+  Object.assign(getRates(), patch);
+}
+// COP por 1 USD usado para valorar saldos en USD: la tasa de venta (lo que recibes al
+// convertir USD->COP). Si aun no hay tasa de ARQ, usa la compra o la referencia de mercado.
+export function usdValuationRate() {
+  const r = getRates();
+  return Number(r.sell) || Number(r.buy) || Number(r.marketRef) || 0;
+}
+export function toBase(amount, cur) {
+  const v = Number(amount) || 0;
+  return cur === "USD" ? v * usdValuationRate() : v;
+}
+export function accountCurrency(accountId) {
+  return accountById(accountId)?.currency || BASE_CURRENCY;
+}
+// Monto de un movimiento expresado en COP (para presupuesto, totales y graficas).
+export function txBase(t) {
+  return toBase(t.amount, accountCurrency(t.accountId));
 }
 
 export function categoryById(id) {
@@ -25,8 +62,8 @@ export function accountById(id) {
 }
 
 // --- Accounts ---
-export function addAccount({ name, type, initialBalance, creditLimit }) {
-  const acc = { id: uid("acc"), name, type, initialBalance: Number(initialBalance) || 0 };
+export function addAccount({ name, type, initialBalance, creditLimit, currency: cur }) {
+  const acc = { id: uid("acc"), name, type, initialBalance: Number(initialBalance) || 0, currency: CURRENCIES.includes(cur) ? cur : BASE_CURRENCY };
   if (type === "credit") acc.creditLimit = Number(creditLimit) || 0;
   state.data.accounts.push(acc);
 }
@@ -62,6 +99,29 @@ export function deleteTransaction(id) {
   state.data.transactions = state.data.transactions.filter((t) => t.id !== id);
 }
 
+// Conversion entre cuentas propias de distinta moneda (p. ej. ARQ USD -> Bancolombia COP).
+// Crea dos movimientos espejo, cada uno en la moneda de su cuenta, con la tasa usada.
+// Ambos lados llevan excludeFromCategoryTotals: el ingreso real ya se registro al recibirlo.
+// rate = COP por 1 USD.
+export function addConversion({ date, fromAccountId, toAccountId, amountFrom, rate }) {
+  const from = accountById(fromAccountId);
+  const to = accountById(toAccountId);
+  const amt = Math.abs(Number(amountFrom));
+  const fx = Number(rate);
+  if (!from || !to || from.currency === to.currency || !(amt > 0) || !(fx > 0)) return false;
+  const amountTo = from.currency === "USD" ? amt * fx : amt / fx;
+  const round = (n, cur) => (cur === "COP" ? Math.round(n) : Math.round(n * 100) / 100);
+  const desc = `Conversión ${from.currency}→${to.currency} @ ${fx}`;
+  const conversionId = uid("cv");
+  const common = { date, categoryId: null, description: desc, type: "Transferencia", excludeFromCategoryTotals: true, fxRate: fx, conversionId };
+  addTransaction({ ...common, accountId: from.id, amount: -round(amt, from.currency) });
+  addTransaction({ ...common, accountId: to.id, amount: round(amountTo, to.currency) });
+  return true;
+}
+export function deleteConversion(tx) {
+  state.data.transactions = state.data.transactions.filter((t) => (tx.conversionId ? t.conversionId !== tx.conversionId : t.id !== tx.id));
+}
+
 // --- Budgets ---
 export function getBudget(month, categoryId) {
   return state.data.budgets.find((b) => b.month === month && b.categoryId === categoryId);
@@ -82,8 +142,9 @@ export function accountBalance(accountId) {
   return base + sum;
 }
 
+// Saldo total expresado en COP (las cuentas en USD se valoran con usdValuationRate).
 export function totalBalance() {
-  return state.data.accounts.reduce((s, a) => s + accountBalance(a.id), 0);
+  return state.data.accounts.reduce((s, a) => s + toBase(accountBalance(a.id), a.currency), 0);
 }
 
 export function monthsWithData() {
@@ -108,7 +169,7 @@ export function budgetRowsForMonth(month) {
     const estimated = budget ? budget.estimated : 0;
     const real = state.data.transactions
       .filter((t) => t.categoryId === cat.id && t.date.slice(0, 7) === month && !t.excludeFromCategoryTotals)
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + txBase(t), 0);
     return { category: cat, estimated, real, balance: real - estimated };
   });
 }
@@ -118,7 +179,7 @@ export function totalRowsAllTime() {
   return state.data.categories.map((cat) => {
     const real = state.data.transactions
       .filter((t) => t.categoryId === cat.id && !t.excludeFromCategoryTotals)
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + txBase(t), 0);
     return { category: cat, real };
   });
 }

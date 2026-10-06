@@ -1,4 +1,4 @@
-import { state, monthsWithData, currentMonth, savingsSeries } from "../state.js";
+import { state, monthsWithData, currentMonth, savingsSeries, txBase } from "../state.js";
 import { cx } from "../ui.js";
 
 // Colors come from the CSS tokens so the charts follow the light/dark theme.
@@ -44,7 +44,7 @@ function drawCategoriaChart(month) {
     Math.abs(
       state.data.transactions
         .filter((t) => t.categoryId === cat.id && t.date.slice(0, 7) === month && t.amount < 0 && !t.excludeFromCategoryTotals)
-        .reduce((s, t) => s + t.amount, 0)
+        .reduce((s, t) => s + txBase(t), 0)
     )
   );
 

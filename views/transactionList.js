@@ -6,6 +6,11 @@ import {
   deleteTransaction,
   categoryById,
   accountById,
+  accountCurrency,
+  addConversion,
+  deleteConversion,
+  getRates,
+  usdValuationRate,
 } from "../state.js";
 import { openModal, confirmDialog } from "../modal.js";
 import { cx, amountClass, pillClass } from "../ui.js";
@@ -24,7 +29,16 @@ export function bindTransactionList(container, rows, { markDirty, onRerender }) 
 
   container.querySelectorAll("[data-open]").forEach((row) => {
     row.addEventListener("click", () => {
-      openTransactionForm({ tx: byId[row.dataset.open], onSaved: markDirty, onRerender });
+      const tx = byId[row.dataset.open];
+      // Las conversiones son un par espejo: se borran juntas, no se editan.
+      if (tx.fxRate) {
+        if (!confirmDialog("Este movimiento es parte de una conversión de divisas. ¿Borrar la conversión completa (ambos lados)?")) return;
+        deleteConversion(tx);
+        markDirty();
+        onRerender();
+        return;
+      }
+      openTransactionForm({ tx, onSaved: markDirty, onRerender });
     });
   });
 }
@@ -41,8 +55,8 @@ function renderRows(rows) {
           <div class="text-xs text-mute truncate">${t.date} · ${acc ? acc.name : "—"}</div>
         </div>
         <div class="text-right shrink-0">
-          <div class="font-semibold ${amountClass(t.amount)}">${currency(t.amount)}</div>
-          ${cat ? `<div class="${pillClass(t.type)} mt-0.5">${cat.name}</div>` : ""}
+          <div class="font-semibold ${amountClass(t.amount)}">${currency(t.amount, acc?.currency)}</div>
+          ${cat ? `<div class="${pillClass(t.type)} mt-0.5">${cat.name}</div>` : t.fxRate ? `<div class="${pillClass()} mt-0.5">Conversión</div>` : ""}
         </div>
       </button>
     `;
@@ -92,11 +106,18 @@ export function openTransactionForm({ tx, onSaved, onRerender }) {
         <div class="col-span-2"><label class="${cx.label}">Descripción</label>
           <input type="text" name="description" class="${cx.input}" value="${tx ? (tx.description || "").replace(/"/g, "&quot;") : ""}" />
         </div>
-        <div class="col-span-2"><label class="${cx.label}">Monto (positivo, el tipo define el signo)</label>
-          <input type="number" name="amount" step="1" min="0" class="${cx.input}" value="${tx ? Math.abs(tx.amount) : ""}" required />
+        <div class="col-span-2"><label class="${cx.label}">Monto en <span id="amountCur">COP</span> (positivo, el tipo define el signo)</label>
+          <input type="number" name="amount" step="0.01" min="0" class="${cx.input}" value="${tx ? Math.abs(tx.amount) : ""}" required />
         </div>
       </div>
     `,
+    onMount: (form) => {
+      const sel = form.querySelector('[name="accountId"]');
+      const label = form.querySelector("#amountCur");
+      const sync = () => (label.textContent = accountCurrency(sel.value));
+      sel.addEventListener("change", sync);
+      sync();
+    },
     onSubmit: (values, close) => {
       const signedAmount = values.type === "Salida" ? -Math.abs(Number(values.amount)) : Math.abs(Number(values.amount));
       const payload = {
@@ -109,6 +130,70 @@ export function openTransactionForm({ tx, onSaved, onRerender }) {
       };
       if (isEdit) updateTransaction(tx.id, payload);
       else addTransaction(payload);
+      onSaved();
+      close();
+      onRerender();
+    },
+  });
+}
+
+// Convierte entre dos cuentas de distinta moneda (p. ej. ARQ USD -> Bancolombia COP) con la
+// tasa realmente aplicada. Se precarga con la tasa de venta (USD->COP) o compra (COP->USD).
+export function openConversionForm({ onSaved, onRerender }) {
+  const accounts = state.data.accounts;
+  const today = new Date().toISOString().slice(0, 10);
+  const usd = accounts.filter((a) => a.currency === "USD");
+  const cop = accounts.filter((a) => a.currency !== "USD");
+  if (!usd.length || !cop.length) {
+    alert("Necesitas al menos una cuenta en USD y una en COP (créalas en Ajustes).");
+    return;
+  }
+  const opt = (list) => list.map((a) => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join("");
+
+  openModal({
+    title: "Convertir divisas",
+    submitLabel: "Convertir",
+    bodyHTML: `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2"><label class="${cx.label}">Dirección</label>
+          <select name="dir" class="${cx.input}">
+            <option value="sell">USD → COP (vender dólares)</option>
+            <option value="buy">COP → USD (comprar dólares)</option>
+          </select>
+        </div>
+        <div><label class="${cx.label}">Fecha</label><input type="date" name="date" class="${cx.input}" value="${today}" required /></div>
+        <div><label class="${cx.label}">Tasa (COP por 1 USD)</label><input type="number" name="rate" step="0.01" min="0" class="${cx.input}" required /></div>
+        <div><label class="${cx.label}">Desde</label><select name="fromAccountId" class="${cx.input}"></select></div>
+        <div><label class="${cx.label}">Hacia</label><select name="toAccountId" class="${cx.input}"></select></div>
+        <div class="col-span-2"><label class="${cx.label}">Monto a convertir (<span id="cvCur">USD</span>)</label>
+          <input type="number" name="amountFrom" step="0.01" min="0" class="${cx.input}" required /></div>
+        <div class="col-span-2 text-sm text-mute" id="cvPreview"></div>
+      </div>
+    `,
+    onMount: (form) => {
+      const f = (n) => form.querySelector(`[name="${n}"]`);
+      const fill = () => {
+        const sell = f("dir").value === "sell";
+        f("fromAccountId").innerHTML = opt(sell ? usd : cop);
+        f("toAccountId").innerHTML = opt(sell ? cop : usd);
+        form.querySelector("#cvCur").textContent = sell ? "USD" : "COP";
+        const r = getRates();
+        f("rate").value = (sell ? r.sell : r.buy) || usdValuationRate() || "";
+        preview();
+      };
+      const preview = () => {
+        const sell = f("dir").value === "sell";
+        const amt = Number(f("amountFrom").value), fx = Number(f("rate").value);
+        form.querySelector("#cvPreview").textContent =
+          amt > 0 && fx > 0 ? `Recibirías ≈ ${sell ? currency(amt * fx) : currency(amt / fx, "USD")}` : "";
+      };
+      f("dir").addEventListener("change", fill);
+      f("amountFrom").addEventListener("input", preview);
+      f("rate").addEventListener("input", preview);
+      fill();
+    },
+    onSubmit: (values, close) => {
+      if (!addConversion(values)) return alert("Revisa los datos de la conversión.");
       onSaved();
       close();
       onRerender();

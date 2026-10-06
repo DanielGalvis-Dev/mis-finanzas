@@ -10,11 +10,19 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 
 ## Stack
 
-- Vanilla JS (ES modules, sin bundler/build step), Tailwind vía CDN (`cdn.tailwindcss.com`),
-  Chart.js vía cdnjs, Google Identity Services (OAuth token client) + Drive API v3 (fetch directo).
-- Sin `npm run build` — se edita y se sube tal cual. `package.json` solo existe para que
-  Node trate los `.js` como ESM (`"type": "module"`) al correr scripts localmente.
-- Modo oscuro fijo (no hay toggle claro/oscuro, es la única apariencia).
+- Vanilla JS (ES modules, sin bundler/build step), Google Identity Services (OAuth token
+  client) + Drive API v3 (fetch directo). Chart.js va local en `vendor/`.
+- **Tailwind compilado, no por CDN**: `tailwind.css` está commiteado. Si agregas o cambias
+  clases Tailwind en el HTML/JS, regéneralo y súbelo:
+  `npx tailwindcss@3.4.17 -c tailwind.config.cjs -i tailwind.input.css -o tailwind.css --minify`
+  (el config replica los tokens de color de `style.css`). Sin esto, las clases nuevas no tendrán estilo.
+- Sin build de producción — se edita y se sube tal cual. `package.json` solo existe para que
+  Node trate los `.js` como ESM (`"type": "module"`).
+- Tema: sigue `prefers-color-scheme` del sistema (claro/oscuro), definido en `style.css`.
+- **PWA**: `manifest.json` + `sw.js` + `icons/`. El service worker precachea el shell;
+  **sube `VERSION` en `sw.js` y agrega a `SHELL` cualquier archivo nuevo** cada vez que
+  publiques cambios. `index.html` oculta la app (muestra un splash) hasta que
+  `tailwind.css`/`style.css` aplican (clase `ready` en `<html>`, con tope de 4 s).
 
 ## Estructura
 
@@ -23,6 +31,8 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
   visible — nunca pongas aquí un `client_secret`).
 - `drive.js` — login (Google Identity Services) + leer/crear/actualizar el archivo
   `finanzas-data.json` en el Drive del usuario.
+- `fx.js` — tasa de mercado USD/COP de referencia (open.er-api.com, sin key, CORS; cache
+  en localStorage). ARQ no tiene API pública de compra/venta: esas tasas se escriben a mano en Ajustes.
 - `state.js` — modelo de datos en memoria + todos los cálculos (balances, presupuesto,
   totales, serie de ahorro).
 - `ui.js` — constantes de clases Tailwind reutilizables (`cx.card`, `cx.btn`, etc.) y
@@ -39,7 +49,11 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 { meta, accounts[], categories[], transactions[], budgets[], transfers[] }
 ```
 
-- **accounts**: `{ id, name, type, initialBalance, creditLimit? }`. `type` ∈
+- **meta**: `{ ..., baseCurrency: "COP", rates: { USD_COP: { buy, sell, marketRef, updatedAt } } }`.
+  `sell` = COP que recibes al convertir 1 USD (venta ARQ); `buy` = COP que pagas por 1 USD.
+  Los saldos USD se valoran en COP con `sell` (`usdValuationRate()`).
+- **accounts**: `{ id, name, type, currency, initialBalance, creditLimit? }`. `currency` ∈ COP/USD
+  (cuentas viejas sin campo = COP, normalizado en `setData`; los movimientos heredan la moneda de la cuenta). `type` ∈
   cash/bank/savings/credit/custom. El balance mostrado = `initialBalance + suma de las
   transacciones de esa cuenta`. Cuentas actuales del usuario: Efectivo, Cuenta bancaria
   (Bancolombia), Ahorros (bolsillo de ahorros del mismo Bancolombia — **no es Nequi**),
@@ -52,6 +66,14 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
   negativo) — el `type` es solo para mostrar el pill.
 - **budgets**: `{ month, categoryId, estimated }` — el "estimado" mensual manual del
   usuario, se compara contra el `real` calculado de las transacciones.
+
+### Multimoneda y conversiones
+
+`accountBalance` devuelve el saldo en la moneda de la cuenta; `totalBalance`, Presupuesto, Total y
+Gráficas convierten a COP con `toBase`/`txBase`. Una **conversión** (Diario → "Convertir divisas",
+`addConversion`) crea dos movimientos espejo (uno por cuenta, cada uno en su moneda) con `fxRate` y
+`conversionId`, `categoryId: null`, y **ambos** con `excludeFromCategoryTotals: true` (el ingreso real ya
+se registró como Entrada cuando llegó el pago). Se borran juntos (`deleteConversion`), no se editan.
 
 ### Transferencias entre cuentas propias — la parte no obvia
 

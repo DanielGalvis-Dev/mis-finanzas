@@ -1,6 +1,6 @@
 import { state, transactionsSorted } from "../state.js";
 import { cx } from "../ui.js";
-import { renderTransactionList, bindTransactionList, openTransactionForm } from "./transactionList.js";
+import { renderTransactionList, bindTransactionList, openTransactionForm, openConversionForm } from "./transactionList.js";
 
 export { openTransactionForm };
 
@@ -21,6 +21,7 @@ export function renderDiario(container, { markDirty }) {
   container.innerHTML = `
     <div class="grid grid-cols-2 gap-2 mb-6 md:flex md:flex-wrap md:items-center md:gap-3">
       <button class="${cx.btnPrimary} order-first col-span-2 py-3 md:order-last md:col-span-1 md:ml-auto md:py-2" id="addTxBtn">Agregar movimiento</button>
+      ${accounts.some((a) => a.currency === "USD") ? `<button class="${cx.btn} col-span-2 py-3 md:order-last md:col-span-1 md:py-2" id="convertBtn">Convertir divisas</button>` : ""}
       <input type="month" id="filterMonth" class="${cx.input} w-full md:w-auto" value="${currentFilters.month}" aria-label="Mes" />
       <select id="filterAccount" class="${cx.input} w-full md:w-auto" aria-label="Cuenta">
         <option value="">Cuentas</option>
@@ -50,6 +51,9 @@ export function renderDiario(container, { markDirty }) {
   });
   container.querySelector("#addTxBtn").addEventListener("click", () => {
     openTransactionForm({ onSaved: markDirty, onRerender: rerender });
+  });
+  container.querySelector("#convertBtn")?.addEventListener("click", () => {
+    openConversionForm({ onSaved: markDirty, onRerender: rerender });
   });
 
   bindTransactionList(container, rows, { markDirty, onRerender: rerender });

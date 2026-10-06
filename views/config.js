@@ -7,13 +7,18 @@ import {
   addCategory,
   updateCategory,
   deleteCategory,
+  CURRENCIES,
+  getRates,
+  setRates,
 } from "../state.js";
+import { fetchMarketRate } from "../fx.js";
 import { openModal, confirmDialog } from "../modal.js";
 import { signOut, saveData } from "../drive.js";
 import { cx, pillClass } from "../ui.js";
 
 export function renderConfig(container, { markDirty, onSignOut, lastSaved, onReloadFromSeed }) {
   const rerender = () => renderConfig(container, { markDirty, onSignOut, lastSaved, onReloadFromSeed });
+  const rates = getRates();
 
   container.innerHTML = `
     <div class="${cx.sectionTitle}">Cuentas</div>
@@ -22,12 +27,29 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
         .map(
           (a) => `<button type="button" class="w-full text-left px-3 py-2.5 border border-line rounded-xl hover:bg-line/50 transition-colors" data-open-acc="${a.id}">
           <div class="font-medium">${a.name}</div>
-          <div class="text-xs text-mute mt-0.5">saldo inicial: ${currency(a.initialBalance)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
+          <div class="text-xs text-mute mt-0.5">${a.currency} · saldo inicial: ${currency(a.initialBalance, a.currency)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
         </button>`
         )
         .join("")}
     </div>
     <button class="${cx.btn}" id="addAccBtn">+ Agregar cuenta</button>
+
+    <div class="${cx.sectionTitle}">Tasas de cambio USD/COP</div>
+    <div class="${cx.card} max-w-md" id="ratesCard">
+      <p class="mt-0 mb-4 text-mute text-sm leading-relaxed">Ingresa las tasas que ves en ARQ (COP por 1 USD). Los saldos en USD se valoran con la tasa de <b>venta</b>.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="${cx.label}">Venta ARQ (USD→COP)</label><input type="number" step="0.01" min="0" id="rateSell" class="${cx.input}" value="${rates.sell || ""}" /></div>
+        <div><label class="${cx.label}">Compra ARQ (COP→USD)</label><input type="number" step="0.01" min="0" id="rateBuy" class="${cx.input}" value="${rates.buy || ""}" /></div>
+      </div>
+      <div class="text-xs text-mute mt-4 leading-relaxed" id="marketRef">Referencia de mercado: ${rates.marketRef ? currency(rates.marketRef) + " por USD" : "—"}${rates.updatedAt ? " · " + new Date(rates.updatedAt).toLocaleString("es-CO") : ""}</div>
+      <div class="flex flex-wrap gap-2 mt-3">
+        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="refreshRate">Actualizar referencia</button>
+        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="useRefSell">Usar como venta</button>
+        <button type="button" class="${cx.btn} ${cx.btnSmall}" id="useRefBuy">Usar como compra</button>
+      </div>
+      <p class="text-xs text-mute mt-3" id="rateMsg"></p>
+      <p class="text-[11px] text-mute mt-2">Referencia: <a class="underline" href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a></p>
+    </div>
 
     <div class="${cx.sectionTitle}">Categorías</div>
     <div class="flex flex-col gap-2 mb-3" id="categoriesList">
@@ -62,6 +84,38 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
       openAccountForm({ acc, onSaved: markDirty, onRerender: rerender });
     })
   );
+
+  const q = (id) => container.querySelector(id);
+  const msg = (t) => (q("#rateMsg").textContent = t);
+  const saveManual = () => {
+    setRates({ sell: Number(q("#rateSell").value) || 0, buy: Number(q("#rateBuy").value) || 0 });
+    markDirty();
+  };
+  q("#rateSell").addEventListener("change", saveManual);
+  q("#rateBuy").addEventListener("change", saveManual);
+  const refresh = async (force) => {
+    try {
+      const m = await fetchMarketRate({ force });
+      setRates({ marketRef: m.rate, updatedAt: m.updatedAt });
+      markDirty();
+      q("#marketRef").textContent = `Referencia de mercado: ${currency(m.rate)} por USD · ${new Date(m.updatedAt).toLocaleString("es-CO")}`;
+      msg("");
+      return m.rate;
+    } catch {
+      msg("No se pudo consultar la tasa de mercado (sin conexión). Usa la última guardada o escribe la de ARQ.");
+      return 0;
+    }
+  };
+  q("#refreshRate").addEventListener("click", () => refresh(true));
+  const useRef = (field, input) => async () => {
+    const r = getRates().marketRef || (await refresh(false));
+    if (!r) return;
+    setRates({ [field]: r });
+    q(input).value = r;
+    markDirty();
+  };
+  q("#useRefSell").addEventListener("click", useRef("sell", "#rateSell"));
+  q("#useRefBuy").addEventListener("click", useRef("buy", "#rateBuy"));
 
   container.querySelector("#addCatBtn").addEventListener("click", () => openCategoryForm({ onSaved: markDirty, onRerender: rerender }));
   container.querySelectorAll("[data-open-cat]").forEach((btn) =>
@@ -122,8 +176,13 @@ function openAccountForm({ acc, onSaved, onRerender }) {
           ${ACCOUNT_TYPES.map((t) => `<option value="${t.value}" ${(acc?.type || "cash") === t.value ? "selected" : ""}>${t.label}</option>`).join("")}
         </select>
       </div>
+      <div class="mb-3"><label class="${cx.label}">Moneda</label>
+        <select name="currency" class="${cx.input}">
+          ${CURRENCIES.map((c) => `<option value="${c}" ${(acc?.currency || "COP") === c ? "selected" : ""}>${c}</option>`).join("")}
+        </select>
+      </div>
       <div class="mb-3"><label class="${cx.label}">Saldo inicial (deuda actual si es tarjeta de crédito)</label>
-        <input type="number" step="1" name="initialBalance" class="${cx.input}" value="${acc ? acc.initialBalance : 0}" required />
+        <input type="number" step="0.01" name="initialBalance" class="${cx.input}" value="${acc ? acc.initialBalance : 0}" required />
       </div>
       <div id="creditLimitField" ${acc?.type === "credit" ? "" : "hidden"}>
         <label class="${cx.label}">Cupo de la tarjeta (referencia, no suma al total)</label>
@@ -138,8 +197,8 @@ function openAccountForm({ acc, onSaved, onRerender }) {
       });
     },
     onSubmit: (values, close) => {
-      if (acc) updateAccount(acc.id, { name: values.name, type: values.type, initialBalance: Number(values.initialBalance), creditLimit: values.type === "credit" ? Number(values.creditLimit) || 0 : undefined });
-      else addAccount({ name: values.name, type: values.type, initialBalance: Number(values.initialBalance), creditLimit: values.creditLimit });
+      if (acc) updateAccount(acc.id, { name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.type === "credit" ? Number(values.creditLimit) || 0 : undefined });
+      else addAccount({ name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.creditLimit });
       onSaved();
       close();
       onRerender();

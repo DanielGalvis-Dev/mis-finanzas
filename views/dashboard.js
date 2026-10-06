@@ -1,16 +1,22 @@
-import { state, currency, accountBalance, totalBalance, transactionsSorted } from "../state.js";
+import { state, currency, accountBalance, totalBalance, transactionsSorted, usdValuationRate, toBase } from "../state.js";
 import { openTransactionForm, renderTransactionList, bindTransactionList } from "./transactionList.js";
 import { cx, amountClass } from "../ui.js";
 
 export function renderDashboard(container, { markDirty }) {
   const rerender = () => renderDashboard(container, { markDirty });
   const accounts = state.data.accounts;
+  const hasUsd = accounts.some((a) => a.currency === "USD");
   const recent = transactionsSorted().slice(0, 8);
 
   container.innerHTML = `
     <section class="pt-2 pb-10">
       <div class="text-sm text-mute">Total general</div>
       <div class="text-[2.6rem] leading-none sm:text-7xl font-light tracking-tight mt-2 ${amountClass(totalBalance())}">${currency(totalBalance())}</div>
+      ${
+        hasUsd
+          ? `<div class="text-xs text-mute mt-3">Las cuentas en USD se valoran a ${usdValuationRate() ? currency(usdValuationRate()) + " por USD (tasa de venta)" : "una tasa aún sin definir: configúrala en Ajustes"}.</div>`
+          : ""
+      }
     </section>
 
     <div class="${cx.sectionTitle}">Cuentas</div>
@@ -24,7 +30,10 @@ export function renderDashboard(container, { markDirty }) {
               <div class="font-medium">${a.name}</div>
               ${a.type === "credit" ? `<div class="text-xs text-mute mt-0.5">Cupo ${currency(a.creditLimit || 0)}</div>` : ""}
             </div>
-            <div class="text-xl font-light ${amountClass(bal)}">${currency(bal)}</div>
+            <div class="text-right">
+              <div class="text-xl font-light ${amountClass(bal)}">${currency(bal, a.currency)}</div>
+              ${a.currency === "USD" && usdValuationRate() ? `<div class="text-xs text-mute mt-0.5">≈ ${currency(toBase(bal, "USD"))}</div>` : ""}
+            </div>
           </div>`;
         })
         .join("")}
