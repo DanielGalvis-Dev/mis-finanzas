@@ -141,7 +141,13 @@ function openAccountForm({ acc, onSaved, onRerender }) {
       </div>
       <div id="creditLimitField" ${acc?.type === "credit" ? "" : "hidden"}>
         <label class="${cx.label}">Cupo de la tarjeta (referencia, no suma al total)</label>
-        <input type="number" step="1" name="creditLimit" class="${cx.input}" value="${acc?.creditLimit || 0}" />
+        <input type="number" step="1" name="creditLimit" class="${cx.input} mb-3" value="${acc?.creditLimit || 0}" />
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="${cx.label}">Día de corte</label>
+            <input type="number" step="1" min="1" max="31" name="cutDay" class="${cx.input}" value="${acc?.cutDay || 30}" /></div>
+          <div><label class="${cx.label}">Pagar hasta el día</label>
+            <input type="number" step="1" min="1" max="28" name="payDay" class="${cx.input}" value="${acc?.payDay || 19}" /></div>
+        </div>
       </div>
     `,
     onMount: (form) => {
@@ -152,8 +158,8 @@ function openAccountForm({ acc, onSaved, onRerender }) {
       });
     },
     onSubmit: (values, close) => {
-      if (acc) updateAccount(acc.id, { name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.type === "credit" ? Number(values.creditLimit) || 0 : undefined });
-      else addAccount({ name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.creditLimit });
+      if (acc) updateAccount(acc.id, { name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.type === "credit" ? Number(values.creditLimit) || 0 : undefined, cutDay: values.type === "credit" ? Number(values.cutDay) || 30 : undefined, payDay: values.type === "credit" ? Number(values.payDay) || 19 : undefined });
+      else addAccount({ name: values.name, type: values.type, currency: values.currency, initialBalance: Number(values.initialBalance), creditLimit: values.creditLimit, cutDay: values.cutDay, payDay: values.payDay });
       onSaved();
       close();
       onRerender();

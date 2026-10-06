@@ -1,7 +1,7 @@
 // Service worker: guarda el "shell" de la app para que cargue al instante y sin estilos
 // rotos aun con datos moviles lentos. Los datos NO se cachean aqui: viven en Drive.
 // Sube VERSION cada vez que cambies cualquier archivo de la lista para forzar la actualizacion.
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE = "mis-finanzas-" + VERSION;
 const SHELL = [
   "./",
@@ -14,6 +14,7 @@ const SHELL = [
   "./drive.js",
   "./state.js",
   "./fx.js",
+  "./card.js",
   "./ui.js",
   "./modal.js",
   "./views/dashboard.js",
@@ -23,6 +24,7 @@ const SHELL = [
   "./views/graficas.js",
   "./views/config.js",
   "./views/transactionList.js",
+  "./views/tarjeta.js",
   "./vendor/chart.umd.min.js",
   "./vendor/sweetalert2.all.min.js",
   "./icons/icon-192.png",

@@ -3,6 +3,8 @@ export const state = {
   dirty: false,
 };
 
+import { DEFAULT_CUT_DAY, DEFAULT_PAY_DAY } from "./card.js";
+
 export const BASE_CURRENCY = "COP";
 export const CURRENCIES = ["COP", "USD"];
 
@@ -15,6 +17,10 @@ export function setData(data) {
   data.meta.rates.USD_COP = { buy: 0, sell: 0, marketRef: 0, updatedAt: null, ...data.meta.rates.USD_COP };
   data.accounts.forEach((a) => {
     if (!CURRENCIES.includes(a.currency)) a.currency = BASE_CURRENCY;
+    if (a.type === "credit") {
+      a.cutDay = Number(a.cutDay) || DEFAULT_CUT_DAY;
+      a.payDay = Number(a.payDay) || DEFAULT_PAY_DAY;
+    }
   });
   state.data = data;
 }
@@ -62,9 +68,13 @@ export function accountById(id) {
 }
 
 // --- Accounts ---
-export function addAccount({ name, type, initialBalance, creditLimit, currency: cur }) {
+export function addAccount({ name, type, initialBalance, creditLimit, cutDay, payDay, currency: cur }) {
   const acc = { id: uid("acc"), name, type, initialBalance: Number(initialBalance) || 0, currency: CURRENCIES.includes(cur) ? cur : BASE_CURRENCY };
-  if (type === "credit") acc.creditLimit = Number(creditLimit) || 0;
+  if (type === "credit") {
+    acc.creditLimit = Number(creditLimit) || 0;
+    acc.cutDay = Number(cutDay) || DEFAULT_CUT_DAY;
+    acc.payDay = Number(payDay) || DEFAULT_PAY_DAY;
+  }
   state.data.accounts.push(acc);
 }
 export function updateAccount(id, patch) {

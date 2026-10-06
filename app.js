@@ -1,6 +1,7 @@
 import { initTokenClient, signIn, signInSilent, restoreSession, loadOrCreateData, saveData } from "./drive.js";
 import { state, setData, setRates, getRates } from "./state.js";
 import { fetchRates, REFRESH_MS } from "./fx.js";
+import { checkCardNotifications } from "./views/tarjeta.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderDiario } from "./views/diario.js";
 import { renderPresupuesto } from "./views/presupuesto.js";
@@ -77,6 +78,7 @@ async function loadDataAndShowApp() {
 let rateTimer = null;
 async function updateRates() {
   if (document.hidden || !state.data) return;
+  checkCardNotifications();
   try {
     const r = await fetchRates();
     const prev = getRates();

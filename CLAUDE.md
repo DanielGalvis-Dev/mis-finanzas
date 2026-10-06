@@ -69,6 +69,17 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 - **budgets**: `{ month, categoryId, estimated }` — el "estimado" mensual manual del
   usuario, se compara contra el `real` calculado de las transacciones.
 
+### Tarjeta de crédito: ciclo, 45 días y avisos
+
+Las cuentas `credit` guardan `cutDay` (corte, def. 30) y `payDay` (límite de pago, def. 19, máx 28). `card.js` (puro, con
+pruebas) calcula: días para pagar una compra según su fecha (de ~49 el día después del corte a ~20 el día del corte),
+próxima fecha de corte/pago, valor del extracto por pagar (`statementDue`: deuda al corte menos abonos posteriores) y
+ventana recomendada de compra. `views/tarjeta.js` lo pinta en Inicio (panel + banner a ≤5 días o vencido).
+Una web estática no puede notificar con la app cerrada: por eso hay (a) notificación del sistema al abrir la app
+(una vez al día, requiere activar permiso) y (b) un `.ics` mensual con alarmas -5 y -1 días para el calendario del celular.
+Calibrado con el extracto de sep-2026 (periodo 02-30 sep, pagar antes del 19-oct). **Confirmar con el 2.º extracto** que
+corte 30 / pago 19 se mantienen todos los meses.
+
 ### Multimoneda y conversiones
 
 `accountBalance` devuelve el saldo en la moneda de la cuenta; `totalBalance`, Presupuesto, Total y
