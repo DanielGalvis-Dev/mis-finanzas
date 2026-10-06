@@ -157,7 +157,7 @@ function setSyncStatus(kind, text) {
 
 // PWA: el service worker guarda el shell para abrir rapido incluso con datos moviles lentos.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW no registrado", err)));
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}) /* sin SW la app funciona igual, solo sin caché offline */);
 }
 
 boot();
