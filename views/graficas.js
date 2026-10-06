@@ -5,6 +5,8 @@ import { cx } from "../ui.js";
 const token = (name) => `rgb(${getComputedStyle(document.documentElement).getPropertyValue(name).trim().split(/\s+/).join(",")})`;
 const tokenAlpha = (name, a) => token(name).replace("rgb(", "rgba(").replace(")", `,${a})`);
 
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 let selectedMonth = null;
 let chartCategoria = null;
 let chartAhorro = null;
@@ -34,6 +36,7 @@ export function renderGraficas(container) {
     renderGraficas(container);
   });
 
+  if (typeof Chart !== "undefined") Chart.defaults.animation = reducedMotion() ? false : {};
   drawCategoriaChart(selectedMonth);
   drawAhorroChart();
 }

@@ -47,7 +47,7 @@
       <button data-view="graficas" class="tab-btn px-2.5 text-sm font-medium text-mute whitespace-nowrap hover:text-ink">Gráficas</button>
       <button data-view="config" class="tab-btn px-2.5 text-sm font-medium text-mute whitespace-nowrap hover:text-ink">Ajustes</button>
     </nav>
-    <div class="text-xs text-mute truncate min-w-0 ml-auto" id="syncStatus" hidden></div>
+    <div class="text-[13px] text-mute truncate min-w-0 ml-auto" id="syncStatus" hidden></div>
   </header>
 
   <main id="signedOutView" class="flex-1 flex items-center px-5 sm:px-8 py-12">
@@ -56,7 +56,7 @@
       <p class="text-mute mt-6 leading-relaxed">Los datos se guardan en tu propio Google Drive. Nadie más tiene acceso a ellos.</p>
       <button id="signInBtn" class="mt-8 bg-accent text-surface px-6 py-3 rounded-full font-medium cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-60">Conectar con Google Drive</button>
       <p id="signInError" class="text-neg text-sm mt-4" hidden></p>
-      <p class="text-xs text-mute mt-8 leading-relaxed">La primera vez se crea el archivo <code>finanzas-data.json</code> en tu Drive con tu historial ya migrado.</p>
+      <p class="text-[13px] text-mute mt-8 leading-relaxed">La primera vez se crea el archivo <code>finanzas-data.json</code> en tu Drive con tu historial ya migrado.</p>
     </div>
   </main>
 
@@ -71,12 +71,12 @@
   </main>
 
   <nav id="mobileTabs" class="md:hidden fixed bottom-0 inset-x-0 z-20 bg-bg/95 backdrop-blur border-t border-line grid grid-cols-6 pb-[env(safe-area-inset-bottom)]" hidden>
-    <button data-view="dashboard" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Inicio</button>
-    <button data-view="diario" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Diario</button>
-    <button data-view="presupuesto" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Presup.</button>
-    <button data-view="total" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Total</button>
-    <button data-view="graficas" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Gráficas</button>
-    <button data-view="config" class="tab-btn py-3.5 text-[11px] font-medium text-mute">Ajustes</button>
+    <button data-view="dashboard" class="tab-btn py-3.5 text-xs font-medium text-mute">Inicio</button>
+    <button data-view="diario" class="tab-btn py-3.5 text-xs font-medium text-mute">Diario</button>
+    <button data-view="presupuesto" class="tab-btn py-3.5 text-xs font-medium text-mute">Presup.</button>
+    <button data-view="total" class="tab-btn py-3.5 text-xs font-medium text-mute">Total</button>
+    <button data-view="graficas" class="tab-btn py-3.5 text-xs font-medium text-mute">Gráficas</button>
+    <button data-view="config" class="tab-btn py-3.5 text-xs font-medium text-mute">Ajustes</button>
   </nav>
 
 </div>

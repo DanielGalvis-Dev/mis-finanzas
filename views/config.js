@@ -25,7 +25,7 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
         .map(
           (a) => `<button type="button" class="w-full text-left px-3 py-2.5 border border-line rounded-xl hover:bg-line/50 transition-colors" data-open-acc="${a.id}">
           <div class="font-medium">${a.name}</div>
-          <div class="text-xs text-mute mt-0.5">${a.currency} · saldo inicial: ${currency(a.initialBalance, a.currency)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
+          <div class="text-[13px] text-mute mt-0.5">${a.currency} · saldo inicial: ${currency(a.initialBalance, a.currency)}${a.type === "credit" ? ` · cupo: ${currency(a.creditLimit || 0)}` : ""}</div>
         </button>`
         )
         .join("")}

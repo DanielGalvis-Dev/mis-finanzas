@@ -91,7 +91,9 @@ function linkLabels(form) {
 
 // Dialogos con SweetAlert2 (vendor/, se carga antes de app.js). Si no estuviera disponible,
 // cae a los dialogos nativos del navegador.
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const swalBase = () => ({
+  ...(reducedMotion() ? { showClass: { popup: "", backdrop: "", icon: "" }, hideClass: { popup: "", backdrop: "", icon: "" } } : {}),
   background: "rgb(var(--surface))",
   color: "rgb(var(--ink))",
   confirmButtonColor: "rgb(var(--accent))",

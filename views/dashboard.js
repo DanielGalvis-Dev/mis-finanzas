@@ -16,7 +16,7 @@ export function renderDashboard(container, { markDirty }) {
       <div class="text-[2.6rem] leading-none sm:text-7xl font-light tracking-tight mt-2 ${amountClass(totalBalance())}">${currency(totalBalance())}</div>
       ${
         hasUsd
-          ? `<div class="text-xs text-mute mt-3">Las cuentas en USD se valoran a ${usdValuationRate() ? currency(usdValuationRate(), "COP", 2) + " por USD (tasa de venta)" : "una tasa aún sin definir: configúrala en Ajustes"}.</div>`
+          ? `<div class="text-[13px] text-mute mt-3">Las cuentas en USD se valoran a ${usdValuationRate() ? currency(usdValuationRate(), "COP", 2) + " por USD (tasa de venta)" : "una tasa aún sin definir: configúrala en Ajustes"}.</div>`
           : ""
       }
     </section>
@@ -30,11 +30,11 @@ export function renderDashboard(container, { markDirty }) {
           <div class="flex items-baseline justify-between gap-4 py-4">
             <div>
               <div class="font-medium">${a.name}</div>
-              ${a.type === "credit" ? `<div class="text-xs text-mute mt-0.5">Cupo ${currency(a.creditLimit || 0)}</div>` : ""}
+              ${a.type === "credit" ? `<div class="text-[13px] text-mute mt-0.5">Cupo ${currency(a.creditLimit || 0)}</div>` : ""}
             </div>
             <div class="text-right">
               <div class="text-xl font-light ${amountClass(bal)}">${currency(bal, a.currency)}</div>
-              ${a.currency === "USD" && usdValuationRate() ? `<div class="text-xs text-mute mt-0.5">≈ ${currency(toBase(bal, "USD"))}</div>` : ""}
+              ${a.currency === "USD" && usdValuationRate() ? `<div class="text-[13px] text-mute mt-0.5">≈ ${currency(toBase(bal, "USD"))}</div>` : ""}
             </div>
           </div>`;
         })

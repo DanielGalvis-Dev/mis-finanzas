@@ -62,8 +62,8 @@ function renderDesktopTable(rows, totals) {
           .join("")}
       </tbody>
       <tfoot>
-        <tr class="font-bold">
-          <td class="${cx.td} border-t-2 border-ink/30">TOTALES</td><td class="${cx.td} border-t-2 border-ink/30"></td>
+        <tr class="font-semibold">
+          <td class="${cx.td} border-t-2 border-ink/30">Totales</td><td class="${cx.td} border-t-2 border-ink/30"></td>
           <td class="${cx.td} border-t-2 border-ink/30">${currency(totals.estimated)}</td>
           <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(totals.real)}">${currency(totals.real)}</td>
           <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(totals.balance)}">${currency(totals.balance)}</td>
@@ -85,15 +85,15 @@ function renderMobileCards(rows, totals) {
       </div>
       <div class="grid grid-cols-3 gap-2">
         <div>
-          <div class="text-xs text-mute mb-1">Estimado</div>
+          <div class="text-[13px] text-mute mb-1">Estimado</div>
           <input type="number" step="1" aria-label="Estimado de ${r.category.name}" class="budget-input ${cx.input} px-2 py-1.5" data-cat="${r.category.id}" value="${r.estimated}" />
         </div>
         <div>
-          <div class="text-xs text-mute mb-1">Real</div>
+          <div class="text-[13px] text-mute mb-1">Real</div>
           <div class="font-medium ${amountClass(r.real)}">${currency(r.real)}</div>
         </div>
         <div>
-          <div class="text-xs text-mute mb-1">Balance</div>
+          <div class="text-[13px] text-mute mb-1">Balance</div>
           <div class="font-medium ${amountClass(r.balance)}">${currency(r.balance)}</div>
         </div>
       </div>
@@ -105,11 +105,11 @@ function renderMobileCards(rows, totals) {
   return `
     ${rowsHtml}
     <div class="py-3">
-      <div class="font-bold mb-2">TOTALES</div>
+      <div class="font-semibold mb-2">Totales</div>
       <div class="grid grid-cols-3 gap-2 text-sm">
-        <div><div class="text-xs text-mute mb-1">Estimado</div><div class="font-medium">${currency(totals.estimated)}</div></div>
-        <div><div class="text-xs text-mute mb-1">Real</div><div class="font-medium ${amountClass(totals.real)}">${currency(totals.real)}</div></div>
-        <div><div class="text-xs text-mute mb-1">Balance</div><div class="font-medium ${amountClass(totals.balance)}">${currency(totals.balance)}</div></div>
+        <div><div class="text-[13px] text-mute mb-1">Estimado</div><div class="font-medium">${currency(totals.estimated)}</div></div>
+        <div><div class="text-[13px] text-mute mb-1">Real</div><div class="font-medium ${amountClass(totals.real)}">${currency(totals.real)}</div></div>
+        <div><div class="text-[13px] text-mute mb-1">Balance</div><div class="font-medium ${amountClass(totals.balance)}">${currency(totals.balance)}</div></div>
       </div>
     </div>
   `;

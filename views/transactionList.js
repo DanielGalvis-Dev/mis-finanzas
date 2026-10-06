@@ -52,7 +52,7 @@ function renderRows(rows) {
       <button type="button" class="w-full text-left py-3.5 flex items-center hover:bg-line/30 transition-colors cursor-pointer justify-between gap-3" data-open="${t.id}">
         <div class="min-w-0">
           <div class="font-medium truncate">${t.description || (cat ? cat.name : "Movimiento")}</div>
-          <div class="text-xs text-mute truncate">${fmtDate(t.date)} · ${acc ? acc.name : "—"}</div>
+          <div class="text-[13px] text-mute truncate">${fmtDate(t.date)} · ${acc ? acc.name : "—"}</div>
         </div>
         <div class="text-right shrink-0">
           <div class="font-semibold ${amountClass(t.amount)}">${currency(t.amount, acc?.currency)}</div>

@@ -32,8 +32,8 @@ function renderDesktopTable(rows, total) {
           .join("")}
       </tbody>
       <tfoot>
-        <tr class="font-bold">
-          <td class="${cx.td} border-t-2 border-ink/30">TOTALES</td><td class="${cx.td} border-t-2 border-ink/30"></td>
+        <tr class="font-semibold">
+          <td class="${cx.td} border-t-2 border-ink/30">Totales</td><td class="${cx.td} border-t-2 border-ink/30"></td>
           <td class="${cx.td} border-t-2 border-ink/30 ${amountClass(total)}">${currency(total)}</td>
         </tr>
       </tfoot>
@@ -59,8 +59,8 @@ function renderMobileCards(rows, total) {
 
   return `
     ${rowsHtml}
-    <div class="py-2.5 flex items-center justify-between font-bold">
-      <span>TOTALES</span>
+    <div class="py-2.5 flex items-center justify-between font-semibold">
+      <span>Totales</span>
       <span class="${amountClass(total)}">${currency(total)}</span>
     </div>
   `;

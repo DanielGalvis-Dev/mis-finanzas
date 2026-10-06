@@ -1,7 +1,7 @@
 // Service worker: guarda el "shell" de la app para que cargue al instante y sin estilos
 // rotos aun con datos moviles lentos. Los datos NO se cachean aqui: viven en Drive.
 // Sube VERSION cada vez que cambies cualquier archivo de la lista para forzar la actualizacion.
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = "mis-finanzas-" + VERSION;
 const SHELL = [
   "./",

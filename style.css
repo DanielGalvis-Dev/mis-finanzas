@@ -71,8 +71,10 @@ body {
 
 .chart-card canvas { max-height: 320px; }
 
+/* Movimiento reducido: sin animaciones que se desplazan o rebotan (graficas y dialogos las apagan en JS);
+   los cambios de color/opacidad de hover y foco se conservan porque comunican estado. */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
+  *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
 }
 
 /* Nada se desborda a los lados. */
