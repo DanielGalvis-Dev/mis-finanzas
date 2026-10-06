@@ -88,7 +88,10 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
   const q = (id) => container.querySelector(id);
   const msg = (t) => (q("#rateMsg").textContent = t);
   const saveManual = () => {
-    setRates({ sell: Number(q("#rateSell").value) || 0, buy: Number(q("#rateBuy").value) || 0 });
+    const clean = (v) => Math.max(0, Number(v) || 0);
+    setRates({ sell: clean(q("#rateSell").value), buy: clean(q("#rateBuy").value) });
+    q("#rateSell").value = getRates().sell || "";
+    q("#rateBuy").value = getRates().buy || "";
     markDirty();
   };
   q("#rateSell").addEventListener("change", saveManual);
