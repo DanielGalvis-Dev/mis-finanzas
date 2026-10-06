@@ -12,7 +12,7 @@ import {
   getRates,
   usdValuationRate,
 } from "../state.js";
-import { openModal, confirmDialog } from "../modal.js";
+import { openModal, confirmDialog, alertDialog } from "../modal.js";
 import { cx, amountClass, pillClass } from "../ui.js";
 
 // Compact rows at every width (no horizontal scrolling). Tapping a row opens the edit
@@ -28,11 +28,11 @@ export function bindTransactionList(container, rows, { markDirty, onRerender }) 
   const byId = Object.fromEntries(rows.map((t) => [t.id, t]));
 
   container.querySelectorAll("[data-open]").forEach((row) => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", async () => {
       const tx = byId[row.dataset.open];
       // Las conversiones son un par espejo: se borran juntas, no se editan.
       if (tx.fxRate) {
-        if (!confirmDialog("Este movimiento es parte de una conversión de divisas. ¿Borrar la conversión completa (ambos lados)?")) return;
+        if (!(await confirmDialog("Este movimiento es parte de una conversión de divisas. ¿Borrar la conversión completa (ambos lados)?", { confirmText: "Borrar conversión" }))) return;
         deleteConversion(tx);
         markDirty();
         onRerender();
@@ -74,8 +74,8 @@ export function openTransactionForm({ tx, onSaved, onRerender }) {
     title: isEdit ? "Editar movimiento" : "Agregar movimiento",
     submitLabel: isEdit ? "Guardar cambios" : "Agregar",
     onDelete: isEdit
-      ? (close) => {
-          if (!confirmDialog("¿Borrar este movimiento?")) return;
+      ? async (close) => {
+          if (!(await confirmDialog("¿Borrar este movimiento?", { confirmText: "Borrar" }))) return;
           deleteTransaction(tx.id);
           onSaved();
           close();
@@ -145,7 +145,7 @@ export function openConversionForm({ onSaved, onRerender }) {
   const usd = accounts.filter((a) => a.currency === "USD");
   const cop = accounts.filter((a) => a.currency !== "USD");
   if (!usd.length || !cop.length) {
-    alert("Necesitas al menos una cuenta en USD y una en COP (créalas en Ajustes).");
+    alertDialog("Necesitas al menos una cuenta en USD y una en COP (créalas en Ajustes).", "info");
     return;
   }
   const opt = (list) => list.map((a) => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join("");
@@ -193,7 +193,7 @@ export function openConversionForm({ onSaved, onRerender }) {
       fill();
     },
     onSubmit: (values, close) => {
-      if (!addConversion(values)) return alert("Revisa los datos de la conversión.");
+      if (!addConversion(values)) return alertDialog("Revisa los datos de la conversión.", "error");
       onSaved();
       close();
       onRerender();

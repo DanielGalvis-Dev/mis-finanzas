@@ -11,7 +11,7 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 ## Stack
 
 - Vanilla JS (ES modules, sin bundler/build step), Google Identity Services (OAuth token
-  client) + Drive API v3 (fetch directo). Chart.js va local en `vendor/`.
+  client) + Drive API v3 (fetch directo). Chart.js y SweetAlert2 (diálogos de confirmación/alerta vía `confirmDialog`/`alertDialog` en `modal.js`, asíncronos) van locales en `vendor/`.
 - **Tailwind compilado, no por CDN**: `tailwind.css` está commiteado. Si agregas o cambias
   clases Tailwind en el HTML/JS, regéneralo y súbelo:
   `npx tailwindcss@3.4.17 -c tailwind.config.cjs -i tailwind.input.css -o tailwind.css --minify`

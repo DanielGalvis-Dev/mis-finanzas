@@ -26,7 +26,7 @@ function uid(prefix) {
 export function currency(n, cur = BASE_CURRENCY) {
   const v = Number(n) || 0;
   const digits = cur === "COP" ? 0 : 2;
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: cur, currencyDisplay: cur === "COP" ? "symbol" : "code", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: cur, currencyDisplay: "code", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
 }
 
 // --- Monedas / tasas ---

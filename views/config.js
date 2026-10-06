@@ -12,7 +12,7 @@ import {
   setRates,
 } from "../state.js";
 import { fetchMarketRate } from "../fx.js";
-import { openModal, confirmDialog } from "../modal.js";
+import { openModal, confirmDialog, alertDialog } from "../modal.js";
 import { signOut, saveData } from "../drive.js";
 import { cx, pillClass } from "../ui.js";
 
@@ -128,22 +128,22 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
     })
   );
 
-  container.querySelector("#signOutBtn").addEventListener("click", () => {
-    if (confirmDialog("¿Cerrar sesión? Tus datos ya están guardados en Drive.")) {
+  container.querySelector("#signOutBtn").addEventListener("click", async () => {
+    if (await confirmDialog("¿Cerrar sesión? Tus datos ya están guardados en Drive.", { confirmText: "Cerrar sesión", danger: false })) {
       signOut();
       onSignOut();
     }
   });
 
   container.querySelector("#reloadSeedBtn").addEventListener("click", async () => {
-    if (!confirmDialog("Esto BORRA todos tus movimientos y deja Drive como una plantilla vacía. No se puede deshacer. ¿Continuar?")) return;
+    if (!(await confirmDialog("Esto BORRA todos tus movimientos y deja Drive como una plantilla vacía. No se puede deshacer. ¿Continuar?", { confirmText: "Borrar todo" }))) return;
     const btn = container.querySelector("#reloadSeedBtn");
     btn.disabled = true;
     btn.textContent = "Reiniciando...";
     try {
       await onReloadFromSeed();
     } catch (err) {
-      alert("No se pudo reiniciar: " + (err?.message || err));
+      await alertDialog("No se pudo reiniciar: " + (err?.message || err), "error");
       btn.disabled = false;
       btn.textContent = "Reiniciar a plantilla vacía";
     }
@@ -162,8 +162,8 @@ function openAccountForm({ acc, onSaved, onRerender }) {
   openModal({
     title: acc ? "Editar cuenta" : "Agregar cuenta",
     onDelete: acc
-      ? (close) => {
-          if (!confirmDialog("¿Borrar esta cuenta? Los movimientos asociados no se borran, pero quedarán sin cuenta.")) return;
+      ? async (close) => {
+          if (!(await confirmDialog("¿Borrar esta cuenta? Los movimientos asociados no se borran, pero quedarán sin cuenta.", { confirmText: "Borrar" }))) return;
           deleteAccount(acc.id);
           onSaved();
           close();
@@ -213,8 +213,8 @@ function openCategoryForm({ cat, onSaved, onRerender }) {
   openModal({
     title: cat ? "Editar categoría" : "Agregar categoría",
     onDelete: cat
-      ? (close) => {
-          if (!confirmDialog("¿Borrar esta categoría? Los movimientos asociados no se borran, pero quedarán sin categoría.")) return;
+      ? async (close) => {
+          if (!(await confirmDialog("¿Borrar esta categoría? Los movimientos asociados no se borran, pero quedarán sin categoría.", { confirmText: "Borrar" }))) return;
           deleteCategory(cat.id);
           onSaved();
           close();

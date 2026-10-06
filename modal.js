@@ -46,6 +46,33 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   if (onMount) onMount(form);
 }
 
-export function confirmDialog(message) {
-  return window.confirm(message);
+// Dialogos con SweetAlert2 (vendor/, se carga antes de app.js). Si no estuviera disponible,
+// cae a los dialogos nativos del navegador.
+const swalBase = () => ({
+  background: "rgb(var(--surface))",
+  color: "rgb(var(--ink))",
+  confirmButtonColor: "rgb(var(--accent))",
+  cancelButtonColor: "rgb(var(--mute))",
+  reverseButtons: true,
+  focusCancel: true,
+});
+
+// Devuelve una promesa<boolean>: true si el usuario confirma.
+export async function confirmDialog(message, { confirmText = "Aceptar", danger = true } = {}) {
+  if (!window.Swal) return window.confirm(message);
+  const res = await window.Swal.fire({
+    ...swalBase(),
+    ...(danger ? { confirmButtonColor: "rgb(var(--neg))" } : {}),
+    icon: "warning",
+    text: message,
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: "Cancelar",
+  });
+  return res.isConfirmed;
+}
+
+export async function alertDialog(message, icon = "info") {
+  if (!window.Swal) return window.alert(message);
+  await window.Swal.fire({ ...swalBase(), icon, text: message, confirmButtonText: "Entendido" });
 }
