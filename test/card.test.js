@@ -91,3 +91,23 @@ test("buildIcs: evento mensual con alarmas de 5 y 1 día", () => {
   assert.ok(ics.startsWith("BEGIN:VCALENDAR") && ics.trimEnd().endsWith("END:VCALENDAR"));
   assert.ok(ics.includes("\r\n"));
 });
+
+import { purchaseVerdict, cycleZones } from "../card.js";
+
+test("purchaseVerdict: umbrales de 45 y 25 días", () => {
+  assert.equal(purchaseVerdict(49), "good");
+  assert.equal(purchaseVerdict(45), "good");
+  assert.equal(purchaseVerdict(44), "regular");
+  assert.equal(purchaseVerdict(25), "regular");
+  assert.equal(purchaseVerdict(24), "bad");
+});
+
+test("cycleZones: ciclo de octubre 2026 (1-30 oct) = 5 buenos, 20 regulares, 5 malos", () => {
+  const z = cycleZones(cfg, "2026-10-06");
+  assert.deepEqual({ good: z.good, regular: z.regular, bad: z.bad, total: z.total }, { good: 5, regular: 20, bad: 5, total: 30 });
+  assert.equal(z.todayIndex, 5); // 6 de octubre = sexto día del ciclo
+  assert.deepEqual([z.goodFrom, z.goodTo, z.goodPast, z.badFrom, z.badTo], ["2026-10-01", "2026-10-05", true, "2026-10-26", "2026-10-30"]);
+  assert.equal(cycleZones(cfg, "2026-10-03").goodPast, false);
+  assert.equal(cycleZones(cfg, "2026-10-01").todayIndex, 0);
+  assert.equal(cycleZones(cfg, "2026-10-30").todayIndex, 29);
+});

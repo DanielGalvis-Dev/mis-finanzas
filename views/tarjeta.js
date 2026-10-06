@@ -1,9 +1,9 @@
 import { state, currency } from "../state.js";
-import { cardConfig, cycleInfo, statementDue, alertLevel, todayIso, buildIcs, GOOD_DAYS, BAD_DAYS, financingDays, ALERT_DAYS } from "../card.js";
-import { cx } from "../ui.js";
+import { cardConfig, cycleInfo, statementDue, alertLevel, todayIso, buildIcs, GOOD_DAYS, BAD_DAYS, purchaseVerdict, cycleZones, ALERT_DAYS } from "../card.js";
+import { cx, pillClass } from "../ui.js";
 import { alertDialog } from "../modal.js";
 
-const fmt = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "UTC" });
+const fmt = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "UTC" }).replace(" de ", " ").replace(".", "");
 const plural = (n, one, many) => `${n} ${Math.abs(n) === 1 ? one : many}`;
 
 function creditAccounts() {
@@ -23,23 +23,6 @@ function alertText({ info, due, level }) {
   return `Pagar ${currency(due)} antes del ${fmt(info.statementPayBy)}: ${info.daysToPay === 0 ? "vence hoy" : `faltan ${plural(info.daysToPay, "día", "días")}`}.`;
 }
 
-// Franja del ciclo actual: un cuadro por dia, mas oscuro = mas dias para pagar.
-function cycleStrip({ info, cfg, today }) {
-  const days = [];
-  const start = new Date(info.periodStart + "T00:00:00Z").getTime();
-  const end = new Date(info.nextCut + "T00:00:00Z").getTime();
-  for (let t = start; t <= end; t += 86400000) days.push(new Date(t).toISOString().slice(0, 10));
-  return `<div class="flex gap-px mt-2" aria-hidden="true">${days
-    .map((d) => {
-      const f = financingDays(d, cfg);
-      const cls = f >= GOOD_DAYS ? "bg-pos" : f < BAD_DAYS ? "bg-neg" : "bg-accent";
-      const opacity = f >= GOOD_DAYS ? 1 : f < BAD_DAYS ? 0.85 : 0.45;
-      return `<div class="flex-1 h-5 rounded-sm ${cls} ${d === today ? "ring-2 ring-ink" : ""}" style="opacity:${opacity}" title="${fmt(d)}: ${f} días"></div>`;
-    })
-    .join("")}</div>
-    <div class="flex justify-between text-[11px] text-mute mt-1"><span>${fmt(info.periodStart)}</span><span>corte ${fmt(info.nextCut)}</span></div>`;
-}
-
 export function cardAlertBannerHTML() {
   return creditAccounts()
     .map((a) => summary(a))
@@ -50,38 +33,80 @@ export function cardAlertBannerHTML() {
     .join("");
 }
 
+// Linea de tiempo del ciclo: tres tramos (mejor / regular / evita) con su proporcion real de dias
+// y una marca en el dia de hoy. El significado va en texto, no solo en color.
+function cycleTimeline(s) {
+  const z = cycleZones(s.cfg, s.today);
+  const { info } = s;
+  const pos = ((z.todayIndex + 0.5) / z.total) * 100;
+  const seg = (n, cls) => (n ? `<div class="h-3 ${cls}" style="flex:${n} 1 0"></div>` : "");
+  const label = `Ciclo del ${fmt(info.periodStart)} al ${fmt(info.nextCut)}. Hoy es el día ${z.todayIndex + 1} de ${z.total}. Mejores días: ${z.good}; regulares: ${z.regular}; evitar: ${z.bad}.`;
+  return `<div class="py-5">
+    <div class="flex items-baseline justify-between text-sm mb-3"><span class="font-medium">Ciclo actual</span><span class="text-mute">${fmt(info.periodStart)} – ${fmt(info.nextCut)}</span></div>
+    <div class="relative" role="img" aria-label="${label}">
+      <div class="flex gap-0.5 rounded-full overflow-hidden">${seg(z.good, "bg-pos")}${seg(z.regular, "bg-mute/35")}${seg(z.bad, "bg-neg/70")}</div>
+      <div class="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink rounded-full" style="left:${pos.toFixed(2)}%" title="Hoy"></div>
+    </div>
+    <ul class="mt-4 grid gap-2 text-sm">
+      <li class="flex items-center gap-2"><span class="size-2.5 rounded-sm bg-pos shrink-0"></span><span><b class="font-medium">Mejor comprar</b> ${z.good ? `${fmt(z.goodFrom)} – ${fmt(z.goodTo)}` : "—"} · ${GOOD_DAYS}+ días${z.goodPast ? " · ya pasó" : s.today <= z.goodTo ? " · ahora" : ""}</span></li>
+      <li class="flex items-center gap-2"><span class="size-2.5 rounded-sm bg-mute/35 shrink-0"></span><span><b class="font-medium">Regular</b> · entre ${BAD_DAYS} y ${GOOD_DAYS - 1} días</span></li>
+      <li class="flex items-center gap-2"><span class="size-2.5 rounded-sm bg-neg/70 shrink-0"></span><span><b class="font-medium">Evita</b> ${z.bad ? `${fmt(z.badFrom)} – ${fmt(z.badTo)}` : "—"} · menos de ${BAD_DAYS} días</span></li>
+    </ul>
+  </div>`;
+}
+
+const VERDICT_TEXT = {
+  good: { pill: "entrada", title: "Buen momento para comprar" },
+  regular: { pill: "", title: "Puedes comprar" },
+  bad: { pill: "salida", title: "Mejor espera al corte" },
+};
+
+function verdictRow(s) {
+  const { info } = s;
+  const v = purchaseVerdict(info.todayFinancingDays);
+  const next = info.goodWindow.current ? null : info.goodWindow.from;
+  const hint = v === "good" ? "" : next ? ` Desde el ${fmt(next)} tendrías ${GOOD_DAYS}+ días.` : "";
+  return `<div class="flex items-start justify-between gap-4 py-4">
+    <div class="min-w-0">
+      <div class="font-medium">${VERDICT_TEXT[v].title}</div>
+      <div class="text-sm text-mute mt-0.5">Una compra hoy se paga hasta el ${fmt(info.todayPayBy)}.${hint}</div>
+    </div>
+    <div class="shrink-0 text-right"><span class="${pillClass(VERDICT_TEXT[v].pill)}">${info.todayFinancingDays} días</span></div>
+  </div>`;
+}
+
+function dueRow(s) {
+  const { info, due, level } = s;
+  const tone = level ? "text-neg" : "";
+  if (!(due > 0)) {
+    return `<div class="flex items-baseline justify-between gap-4 py-4"><div><div class="font-medium">Extracto al día</div><div class="text-sm text-mute mt-0.5">Próximo corte ${fmt(info.nextCut)} (${info.daysToCut === 0 ? "hoy" : "en " + plural(info.daysToCut, "día", "días")})</div></div></div>`;
+  }
+  const when = info.daysToPay < 0 ? `Vencido hace ${plural(-info.daysToPay, "día", "días")}` : info.daysToPay === 0 ? "Vence hoy" : `Faltan ${plural(info.daysToPay, "día", "días")}`;
+  return `<div class="flex items-baseline justify-between gap-4 py-4">
+    <div><div class="font-medium">Pagar antes del ${fmt(info.statementPayBy)}</div><div class="text-sm ${level ? "text-neg" : "text-mute"} mt-0.5">${when} · corte ${fmt(info.nextCut)} en ${plural(info.daysToCut, "día", "días")}</div></div>
+    <div class="text-xl font-light ${tone}">${currency(due)}</div>
+  </div>`;
+}
+
 export function cardPanelsHTML() {
   const list = creditAccounts();
   if (!list.length) return "";
-  const canNotify = "Notification" in window && Notification.permission === "default";
-  return `<div class="${cx.sectionTitle}">Tarjeta de crédito</div>${list
+  const perm = "Notification" in window ? Notification.permission : "unsupported";
+  return list
     .map((acc) => {
       const s = summary(acc);
-      const { info, due, cfg } = s;
-      const good = info.goodWindow;
-      return `<div class="${cx.card} mb-3" data-card="${acc.id}">
-        <div class="font-medium mb-3">${acc.name}</div>
-        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt class="text-mute">Por pagar</dt>
-          <dd>${due > 0 ? `<b>${currency(due)}</b> antes del ${fmt(info.statementPayBy)} (${info.daysToPay < 0 ? "vencido" : plural(info.daysToPay, "día", "días")})` : "Nada pendiente del último extracto"}</dd>
-          <dt class="text-mute">Si compras hoy</dt>
-          <dd><b>${info.todayFinancingDays}</b> días para pagar (hasta el ${fmt(info.todayPayBy)})</dd>
-          <dt class="text-mute">Próximo corte</dt>
-          <dd>${fmt(info.nextCut)} (${info.daysToCut === 0 ? "hoy" : "en " + plural(info.daysToCut, "día", "días")})</dd>
-          <dt class="text-mute">Mejor comprar</dt>
-          <dd>${good.from <= good.to ? `del ${fmt(good.from)} al ${fmt(good.to)} (${GOOD_DAYS}+ días)${good.current ? " · es ahora" : ""}` : "—"}</dd>
-          <dt class="text-mute">Evita</dt>
-          <dd>del ${fmt(info.avoidFrom)} al ${fmt(info.avoidTo)} (menos de ${BAD_DAYS} días): mejor esperar al corte</dd>
-        </dl>
-        ${cycleStrip(s)}
-        <div class="flex flex-wrap gap-2 mt-4">
-          <button type="button" class="${cx.btn} ${cx.btnSmall}" data-ics="${acc.id}">Agregar recordatorio al calendario</button>
-          ${canNotify ? `<button type="button" class="${cx.btn} ${cx.btnSmall}" data-notify="${acc.id}">Activar avisos en este dispositivo</button>` : ""}
+      return `<div class="${cx.sectionTitle}">Tarjeta · ${acc.name}</div>
+      <div data-card="${acc.id}">
+        <div class="divide-y divide-line border-y border-line">${dueRow(s)}${verdictRow(s)}</div>
+        ${cycleTimeline(s)}
+        <div class="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+          <button type="button" class="${cx.btn} min-h-11 md:min-h-0" data-ics="${acc.id}">Agregar al calendario</button>
+          ${perm === "default" ? `<button type="button" class="${cx.btn} min-h-11 md:min-h-0" data-notify="${acc.id}">Activar avisos</button>` : perm === "granted" ? `<span class="text-sm text-mute">Avisos activados</span>` : ""}
         </div>
-        <p class="text-[11px] text-mute mt-3 leading-relaxed">Corte día ${cfg.cutDay}, pago hasta el día ${cfg.payDay} (se cambian en Ajustes). Aviso cuando falten ${ALERT_DAYS} días o menos.</p>
+        <p class="text-sm text-mute mt-3 leading-relaxed">Corte el ${s.cfg.cutDay}, pago hasta el ${s.cfg.payDay}. Te avisamos ${ALERT_DAYS} días antes. Cambia las fechas en Ajustes → cuenta.</p>
       </div>`;
     })
-    .join("")}`;
+    .join("");
 }
 
 export function bindCardPanels(container, rerender) {

@@ -148,3 +148,33 @@ export function buildIcs({ name, payDay, nextPayBy }) {
     "",
   ].join("\r\n");
 }
+
+// "good" (>= GOOD_DAYS), "bad" (< BAD_DAYS) o "regular" para una cantidad de dias de financiacion.
+export function purchaseVerdict(days) {
+  if (days >= GOOD_DAYS) return "good";
+  if (days < BAD_DAYS) return "bad";
+  return "regular";
+}
+
+// Cuenta los dias buenos / regulares / malos del ciclo actual (desde el dia siguiente al corte
+// hasta el corte) y en que posicion cae hoy, para dibujar la linea de tiempo.
+export function cycleZones(cfg, todayStr) {
+  const info = cycleInfo(cfg, todayStr);
+  const start = toNum(info.periodStart);
+  const end = toNum(info.nextCut);
+  const zones = { good: 0, regular: 0, bad: 0 };
+  for (let d = start; d <= end; d++) zones[purchaseVerdict(financingDays(fromNum(d), cfg))]++;
+  const total = end - start + 1;
+  const today = toNum(todayStr);
+  return {
+    ...zones,
+    total,
+    todayIndex: today - start,
+    // Rangos de ESTE ciclo (la ventana buena puede haber pasado ya: ver goodWindow para la siguiente).
+    goodFrom: zones.good ? fromNum(start) : null,
+    goodTo: zones.good ? fromNum(start + zones.good - 1) : null,
+    goodPast: zones.good > 0 && today > start + zones.good - 1,
+    badFrom: zones.bad ? fromNum(end - zones.bad + 1) : null,
+    badTo: zones.bad ? fromNum(end) : null,
+  };
+}
