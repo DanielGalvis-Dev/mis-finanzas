@@ -56,7 +56,8 @@
 - **Casos de uso:** efectivo ⇄ banco, pago de la tarjeta de crédito (banco → tarjeta), Disponible ⇄ Ahorro de Bancolombia, y conversión USD ⇄ COP.
 - **Edición:** una transferencia no se edita; al tocarla en la lista se ofrece borrarla completa (ambos lados).
 - **Reglas de validación:** `validateTransferInput` en `state.js` concentra las reglas del Nivel 3 (monto mayor a 0, origen distinto de destino, «Todo» con saldo, tasa mayor a 0 y sin bolsillo entre monedas distintas) y tiene pruebas unitarias; el formulario solo muestra su mensaje.
-- **Cierre del modal:** con campos modificados, el clic fuera se ignora y Escape pide confirmar el descarte (`modal.js`).
+- **Cierre del modal:** Con campos modificados, el clic fuera o Escape no cierran en silencio: abren una alerta SweetAlert2 «Si sales ahora se perderá lo que escribiste en este formulario. ¿Salir sin guardar?» (Seguir editando / Salir sin guardar). Sin cambios, cierran de inmediato; el botón Cancelar siempre cierra. Lo define `modal.js` y vale para todos los formularios de la app.
+- **Avisos de resultado:** al registrar se muestra el aviso «Transferencia registrada» o «Conversión registrada»; al borrar el par, «Transferencia eliminada» o «Conversión eliminada» (con confirmación previa).
 - **Vista previa:** si hay conversión, debajo se muestra «Recibirías ≈ …», recalculado al cambiar monto o tasa; no es un campo.
 
 ### Versión y revisión (del schema de ese formulario, no de esta plantilla)

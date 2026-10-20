@@ -126,6 +126,14 @@ y se dejan tal cual (no se re-emparejan): siguen cuadrando porque la bandera ya 
 El gráfico "Evolución del ahorro" (`savingsSeries` en `state.js`) **no** usa la categoría — suma los
 movimientos con `pocket: "ahorro"` de las cuentas con bolsillo, más su `savingsInitialBalance`.
 
+### Modales y avisos
+
+`openModal` (`modal.js`) no descarta en silencio: si hay campos modificados, el clic fuera o Escape abren una alerta
+SweetAlert2 («¿Salir sin guardar?»). Los borrados piden confirmación (`confirmDialog`) y las acciones que cambian datos
+(registrar, editar, borrar movimiento/transferencia/cuenta/categoría, guardar el presupuesto por defecto) muestran un
+toast breve (`toast()`). No pongas toast en ediciones en línea de cada campo (p. ej. el Estimado de un mes): ya hay
+indicador de guardado en el encabezado y sería ruido.
+
 ### Fechas
 
 Siempre en **hora local**: usa `todayIso()` (`card.js`, reexportada por `state.js`) y `currentMonth()`. Nunca

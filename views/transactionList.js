@@ -19,7 +19,7 @@ import {
   getRates,
   usdValuationRate,
 } from "../state.js";
-import { openModal, confirmDialog, alertDialog } from "../modal.js";
+import { openModal, confirmDialog, alertDialog, toast } from "../modal.js";
 import { cx, amountClass, pillClass, fmtDate } from "../ui.js";
 
 // Compact rows at every width (no horizontal scrolling). Tapping a row opens the edit
@@ -44,6 +44,7 @@ export function bindTransactionList(container, rows, { markDirty, onRerender }) 
         deleteTransfer(tx);
         markDirty();
         onRerender();
+        toast(tx.fxRate ? "Conversión eliminada" : "Transferencia eliminada");
         return;
       }
       openTransactionForm({ tx, onSaved: markDirty, onRerender });
@@ -89,6 +90,7 @@ export function openTransactionForm({ tx, onSaved, onRerender }) {
           onSaved();
           close();
           onRerender();
+          toast("Movimiento eliminado");
         }
       : undefined,
     bodyHTML: `
@@ -156,6 +158,7 @@ export function openTransactionForm({ tx, onSaved, onRerender }) {
       onSaved();
       close();
       onRerender();
+      toast(isEdit ? "Movimiento actualizado" : "Movimiento registrado");
     },
   });
 }
@@ -266,6 +269,7 @@ export function openTransferForm({ onSaved, onRerender }) {
       onSaved();
       close();
       onRerender();
+      toast(check.kind === "conversion" ? "Conversión registrada" : "Transferencia registrada");
     },
   });
 }

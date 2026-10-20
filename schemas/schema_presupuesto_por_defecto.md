@@ -39,6 +39,7 @@ Hay un campo `amount` por cada categoría de tipo Salida que no sea de gasto lib
 - **Sin botón Guardar y sin mensaje de error:** cada campo guarda al confirmar el valor (Enter o al salir del campo). Como no hay envío de formulario, no se muestran mensajes nativos del navegador; la normalización de la fila de arriba cubre los valores inválidos.
 - **Vigencia:** el cambio aplica desde el mes siguiente (`from`); el mes en curso y los anteriores conservan su valor. Un estimado editado a mano en un mes concreto desde Presupuesto gana sobre el valor por defecto. El mes en curso no toma un valor nuevo hasta que se edite a mano o llegue el mes siguiente.
 - **Mismo criterio en Presupuesto:** el campo "Estimado" de cada mes en la pestaña Presupuesto sigue las mismas reglas (entero, mínimo 0, gasto guardado en negativo) pero escribe solo ese mes.
+- **Aviso al guardar:** cada valor guardado muestra un aviso breve «Presupuesto por defecto guardado: aplica desde <mes siguiente>», para dejar claro desde cuándo rige.
 - **Pre-llenado:** el valor mostrado sale del historial guardado en el archivo de Drive; es editable y no hay otra fuente que pueda discrepar.
 
 ### Versión y revisión (del schema de ese formulario, no de esta plantilla)

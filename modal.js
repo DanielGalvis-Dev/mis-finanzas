@@ -36,14 +36,23 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   // Foto de los campos al abrir (despues de onMount): permite saber si hay cambios sin guardar.
   let initialState;
   const hasChanges = () => initialState !== undefined && new URLSearchParams(new FormData(form)).toString() !== initialState;
-  // Escape y clic fuera no descartan en silencio lo que el usuario ya escribio.
+  // Escape y clic fuera no descartan en silencio lo que el usuario ya escribio: avisan antes de cerrar.
+  let askingToClose = false;
   const requestClose = async () => {
-    if (!hasChanges() || (await confirmDialog("Tienes cambios sin guardar. ¿Descartarlos?", { confirmText: "Descartar" }))) close();
+    if (askingToClose) return;
+    if (!hasChanges()) return close();
+    askingToClose = true;
+    const discard = await confirmDialog("Si sales ahora se perderá lo que escribiste en este formulario. ¿Salir sin guardar?", {
+      confirmText: "Salir sin guardar",
+      cancelText: "Seguir editando",
+    });
+    askingToClose = false;
+    if (discard) close();
   };
 
   // Teclado: Escape cierra, Tab se queda dentro del dialogo y al cerrar el foco vuelve a donde estaba.
   const onKey = (e) => {
-    if (document.querySelector(".swal2-container")) return; // un aviso de SweetAlert2 manda sobre el modal
+    if (document.querySelector(".swal2-popup:not(.swal2-toast)")) return; // un aviso de SweetAlert2 manda sobre el modal (los toasts no)
     if (e.key === "Escape") {
       e.preventDefault();
       requestClose();
@@ -68,7 +77,7 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   };
   document.addEventListener("keydown", onKey);
 
-  backdrop.addEventListener("click", (e) => { if (e.target === backdrop && !hasChanges()) close(); });
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) requestClose(); });
   document.getElementById("modalCancel").addEventListener("click", close);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -113,7 +122,7 @@ const swalBase = () => ({
 });
 
 // Devuelve una promesa<boolean>: true si el usuario confirma.
-export async function confirmDialog(message, { confirmText = "Aceptar", danger = true } = {}) {
+export async function confirmDialog(message, { confirmText = "Aceptar", cancelText = "Cancelar", danger = true } = {}) {
   if (!window.Swal) return window.confirm(message);
   const res = await window.Swal.fire({
     ...swalBase(),
@@ -122,7 +131,7 @@ export async function confirmDialog(message, { confirmText = "Aceptar", danger =
     text: message,
     showCancelButton: true,
     confirmButtonText: confirmText,
-    cancelButtonText: "Cancelar",
+    cancelButtonText: cancelText,
   });
   return res.isConfirmed;
 }
@@ -130,4 +139,27 @@ export async function confirmDialog(message, { confirmText = "Aceptar", danger =
 export async function alertDialog(message, icon = "info") {
   if (!window.Swal) return window.alert(message);
   await window.Swal.fire({ ...swalBase(), icon, text: message, confirmButtonText: "Entendido" });
+}
+
+// Aviso breve y sin bloqueo (toast de SweetAlert2) para confirmar que algo se guardo o se borro.
+// Se usa solo en acciones que cambian datos, no en cada edicion de un campo en linea.
+export function toast(message, icon = "success") {
+  if (!window.Swal) return;
+  // El aviso no debe robar el foco (p. ej. al pulsar Tab entre campos de Ajustes).
+  const active = document.activeElement;
+  window.Swal.fire({
+    didOpen: () => {
+      if (active && active.isConnected && document.activeElement !== active) active.focus();
+    },
+    ...(reducedMotion() ? { showClass: { popup: "" }, hideClass: { popup: "" } } : {}),
+    toast: true,
+    position: "top-end",
+    icon,
+    title: message,
+    showConfirmButton: false,
+    timer: 2500,
+    timerProgressBar: true,
+    background: "rgb(var(--surface))",
+    color: "rgb(var(--ink))",
+  });
 }

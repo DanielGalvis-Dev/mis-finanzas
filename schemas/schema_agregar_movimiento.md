@@ -42,6 +42,7 @@
 - **Back y BD:** la app es un sitio estático sin backend ni base de datos propia; los datos viven en un archivo JSON del Google Drive del usuario. Por eso no hay capas Back ni BD, y el Nivel 4 y el Nivel 5 no aplican.
 - **Mensajes de error:** el formulario usa la validación nativa de HTML5 (`required`, `min`, `step`); no define textos propios.
 - **Orden de tabulación:** es el orden natural del DOM; no hay `tabindex`.
+- **Avisos de resultado:** al guardar se muestra «Movimiento registrado» o «Movimiento actualizado»; al borrar (con confirmación previa), «Movimiento eliminado». Con campos modificados, el clic fuera o Escape piden confirmar antes de descartar (`modal.js`).
 - **Fecha de hoy:** se calcula en hora local (`todayIso`), no en UTC; de noche en Colombia ya no salta al día siguiente.
 - **Transferencias y conversiones:** los movimientos creados por "Transferir" (ver `schema_transferir.md`) no se editan con este formulario; al tocarlos se ofrece borrar el par completo.
 

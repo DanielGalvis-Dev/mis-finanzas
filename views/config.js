@@ -14,7 +14,7 @@ import {
   currentMonth,
   nextMonth,
 } from "../state.js";
-import { openModal, confirmDialog, alertDialog } from "../modal.js";
+import { openModal, confirmDialog, alertDialog, toast } from "../modal.js";
 import { signOut, saveData } from "../drive.js";
 import { cx, pillClass } from "../ui.js";
 
@@ -92,6 +92,7 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
       const next = document.activeElement?.classList?.contains("default-input") ? document.activeElement.dataset.cat : null;
       rerender();
       if (next) container.querySelector(`.default-input[data-cat="${next}"]`)?.focus();
+      toast(`Presupuesto por defecto guardado: aplica desde ${monthLabel(nextMonth(currentMonth()))}`);
     })
   );
 
@@ -164,6 +165,7 @@ function openAccountForm({ acc, onSaved, onRerender }) {
           onSaved();
           close();
           onRerender();
+          toast("Cuenta eliminada");
         }
       : undefined,
     bodyHTML: `
@@ -219,6 +221,7 @@ function openAccountForm({ acc, onSaved, onRerender }) {
       onSaved();
       close();
       onRerender();
+      toast(acc ? "Cuenta actualizada" : "Cuenta agregada");
     },
   });
 }
@@ -233,6 +236,7 @@ function openCategoryForm({ cat, onSaved, onRerender }) {
           onSaved();
           close();
           onRerender();
+          toast("Categoría eliminada");
         }
       : undefined,
     bodyHTML: `
@@ -255,6 +259,7 @@ function openCategoryForm({ cat, onSaved, onRerender }) {
       onSaved();
       close();
       onRerender();
+      toast(cat ? "Categoría actualizada" : "Categoría agregada");
     },
   });
 }
