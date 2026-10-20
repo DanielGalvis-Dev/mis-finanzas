@@ -183,17 +183,17 @@ export function addTransfer({ date, fromAccountId, fromPocket, toAccountId, toPo
   const from = accountById(fromAccountId);
   const to = accountById(toAccountId);
   const amt = Math.abs(Number(amount));
-  const fp = fromPocket || undefined;
-  const tp = toPocket || undefined;
+  const sourcePocket = fromPocket || undefined;
+  const targetPocket = toPocket || undefined;
   if (!from || !to || from.currency !== to.currency || !(amt > 0) || !date) return false;
-  if (from.id === to.id && fp === tp) return false;
-  if ((fp && !accountHasPocket(from)) || (tp && !accountHasPocket(to))) return false;
+  if (from.id === to.id && sourcePocket === targetPocket) return false;
+  if ((sourcePocket && !accountHasPocket(from)) || (targetPocket && !accountHasPocket(to))) return false;
   const label = (acc, pocket) => (pocket ? `${acc.name} › Ahorro` : acc.name);
-  const desc = (description || "").trim() || `Transferencia ${label(from, fp)} → ${label(to, tp)}`;
+  const desc = (description || "").trim() || `Transferencia ${label(from, sourcePocket)} → ${label(to, targetPocket)}`;
   const transferId = uid("tr");
   const common = { date, categoryId: null, description: desc, type: "Transferencia", excludeFromCategoryTotals: true, transferId };
-  addTransaction({ ...common, accountId: from.id, amount: -amt, ...(fp ? { pocket: fp } : {}) });
-  addTransaction({ ...common, accountId: to.id, amount: amt, ...(tp ? { pocket: tp } : {}) });
+  addTransaction({ ...common, accountId: from.id, amount: -amt, ...(sourcePocket ? { pocket: sourcePocket } : {}) });
+  addTransaction({ ...common, accountId: to.id, amount: amt, ...(targetPocket ? { pocket: targetPocket } : {}) });
   return true;
 }
 // Borra una transferencia o conversion completa (ambos lados).
@@ -234,8 +234,8 @@ export function getEstimate(month, categoryId) {
 }
 export function nextMonth(month) {
   const [y, m] = month.split("-").map(Number);
-  const t = y * 12 + m; // (m - 1) + 1
-  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+  const monthIndex = y * 12 + m; // (m - 1) + 1
+  return `${Math.floor(monthIndex / 12)}-${String((monthIndex % 12) + 1).padStart(2, "0")}`;
 }
 // Cambia el valor por defecto SOLO para los meses siguientes al actual: el mes en curso y los
 // anteriores conservan lo que ya tenian. `from` es inyectable para las pruebas.
@@ -272,6 +272,14 @@ export function pocketBalance(accountId, pocket = POCKET_SAVINGS) {
 // Lo que queda fuera del bolsillo: saldo total menos ahorro.
 export function availableBalance(accountId) {
   return accountBalance(accountId) - pocketBalance(accountId);
+}
+// Saldo que se puede transferir "Todo" desde un origen: el bolsillo de ahorro, la parte disponible de una
+// cuenta con bolsillo, o el saldo total de las demas. Redondeado a la precision de la moneda.
+export function transferableBalance(accountId, pocket) {
+  const acc = accountById(accountId);
+  if (!acc) return 0;
+  const bal = pocket ? pocketBalance(accountId) : accountHasPocket(acc) ? availableBalance(accountId) : accountBalance(accountId);
+  return acc.currency === BASE_CURRENCY ? Math.round(bal) : Math.round(bal * 100) / 100;
 }
 
 // Saldo total expresado en COP (las cuentas en USD se valoran con usdValuationRate).

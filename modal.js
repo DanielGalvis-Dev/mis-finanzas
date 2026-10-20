@@ -81,7 +81,8 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
 function linkLabels(form) {
   let n = 0;
   form.querySelectorAll("label").forEach((label) => {
-    if (label.htmlFor) return;
+    // Una etiqueta que envuelve su propio campo (casillas) ya queda enlazada; no se apunta a otro.
+    if (label.htmlFor || label.querySelector("input, select, textarea")) return;
     const control = label.parentElement?.querySelector("input, select, textarea");
     if (!control) return;
     if (!control.id) control.id = "fld_" + control.name + "_" + n++;

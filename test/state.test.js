@@ -26,6 +26,8 @@ import {
   setBudget,
   setBudgetDefault,
   getEstimate,
+  addCategory,
+  transferableBalance,
 } from "../state.js";
 
 function freshData() {
@@ -179,9 +181,9 @@ function dataV1() {
 }
 
 test("migración v1→v2: Ahorros pasa a bolsillo de Bancolombia sin cambiar el saldo total", () => {
-  const d = dataV1();
-  const totalAntes = d.accounts.reduce((s, a) => s + a.initialBalance, 0) + d.transactions.reduce((s, t) => s + t.amount, 0);
-  setData(d);
+  const legacyData = dataV1();
+  const totalAntes = legacyData.accounts.reduce((s, a) => s + a.initialBalance, 0) + legacyData.transactions.reduce((s, t) => s + t.amount, 0);
+  setData(legacyData);
   assert.equal(state.data.meta.schemaVersion, 2);
   assert.equal(state.data.accounts.find((a) => a.id === "acc_ahorros"), undefined);
   const banco = state.data.accounts.find((a) => a.id === "acc_banco");
@@ -197,27 +199,27 @@ test("migración v1→v2: Ahorros pasa a bolsillo de Bancolombia sin cambiar el 
 
 test("migración v1→v2 es idempotente y marca las categorías de gasto libre", () => {
   setData(dataV1());
-  const una = JSON.stringify(state.data);
-  setData(JSON.parse(una));
-  assert.equal(JSON.stringify(state.data), una);
+  const firstPass = JSON.stringify(state.data);
+  setData(JSON.parse(firstPass));
+  assert.equal(JSON.stringify(state.data), firstPass);
   const libres = state.data.categories.filter((c) => c.noBudget).map((c) => c.name).sort();
   assert.deepEqual(libres, ["Comida Gatos", "Gasolina", "Otros", "Pasajes"]);
 });
 
 test("savingsSeries sigue el saldo del bolsillo de ahorro", () => {
   setData(dataV1());
-  const s = savingsSeries();
-  assert.equal(s.at(-1).cumulative, 500);
+  const series = savingsSeries();
+  assert.equal(series.at(-1).cumulative, 500);
 });
 
 test("addTransfer: efectivo ⇄ banco es UN registro con dos movimientos espejo, fuera de las categorías", () => {
   setData(dataV1());
   assert.equal(addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: 100 }), true);
-  const [a, b] = state.data.transactions.slice(-2);
-  assert.equal(a.amount, -100);
-  assert.equal(b.amount, 100);
-  assert.equal(a.transferId, b.transferId);
-  for (const t of [a, b]) {
+  const [outgoing, incoming] = state.data.transactions.slice(-2);
+  assert.equal(outgoing.amount, -100);
+  assert.equal(incoming.amount, 100);
+  assert.equal(outgoing.transferId, incoming.transferId);
+  for (const t of [outgoing, incoming]) {
     assert.equal(t.categoryId, null);
     assert.equal(t.excludeFromCategoryTotals, true);
   }
@@ -277,4 +279,60 @@ test("presupuesto: lo editado en un mes gana al valor por defecto y no cambia lo
   assert.equal(getEstimate("2026-10", "seg"), -200000);
   assert.equal(getEstimate("2026-12", "seg"), -200000);
   assert.equal(budgetRowsForMonth("2026-11").find((r) => r.category.id === "seg").estimated, -300000);
+});
+
+test("addAccount con hasSavings guarda el saldo inicial del bolsillo dentro del saldo total", () => {
+  addAccount({ name: "Bancolombia", type: "bank", initialBalance: 1000, hasSavings: true, savingsInitialBalance: 300 });
+  const acc = state.data.accounts.at(-1);
+  assert.equal(acc.hasSavings, true);
+  assert.equal(pocketBalance(acc.id), 300);
+  assert.equal(availableBalance(acc.id), 700);
+  assert.equal(accountBalance(acc.id), 1000);
+});
+
+test("addAccount sin hasSavings no crea bolsillo", () => {
+  addAccount({ name: "Caja", type: "cash", initialBalance: 50, savingsInitialBalance: 20 });
+  const acc = state.data.accounts.at(-1);
+  assert.equal(acc.hasSavings, undefined);
+  assert.equal(pocketBalance(acc.id), 0);
+});
+
+test("addCategory con noBudget queda como gasto libre y sin él no lleva la marca", () => {
+  addCategory({ name: "Mercado", kind: "Salida", noBudget: true });
+  addCategory({ name: "Servicios", kind: "Salida" });
+  const [free, fixed] = state.data.categories.slice(-2);
+  assert.equal(free.noBudget, true);
+  assert.equal(fixed.noBudget, undefined);
+});
+
+test("addTransaction con pocket mueve el bolsillo y deja intacto el disponible del resto", () => {
+  setData(dataV1());
+  addTransaction({ date: "2026-10-05", accountId: "acc_banco", categoryId: "aho", type: "Entrada", amount: 40, pocket: "ahorro" });
+  assert.equal(pocketBalance("acc_banco"), 540);
+  assert.equal(availableBalance("acc_banco"), 800);
+});
+
+test("transferableBalance (opción «Todo»): bolsillo, disponible y cuenta simple", () => {
+  setData(dataV1());
+  assert.equal(transferableBalance("acc_banco", "ahorro"), 500);
+  assert.equal(transferableBalance("acc_banco"), 800);
+  assert.equal(transferableBalance("acc_efectivo"), 0);
+  assert.equal(transferableBalance("no-existe"), 0);
+});
+
+test("transferableBalance redondea COP a enteros y USD a centavos", () => {
+  addAccount({ name: "Pesos", type: "cash", initialBalance: 1000.6 });
+  addAccount({ name: "Dolares", type: "bank", initialBalance: 12.345, currency: "USD" });
+  const [cop, usd] = state.data.accounts.slice(-2);
+  assert.equal(transferableBalance(cop.id), 1001);
+  assert.equal(transferableBalance(usd.id), 12.35);
+});
+
+test("«Todo» + addTransfer deja el origen en cero sin tocar el total", () => {
+  setData(dataV1());
+  const total = totalBalance();
+  addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: transferableBalance("acc_banco") });
+  assert.equal(availableBalance("acc_banco"), 0);
+  assert.equal(accountBalance("acc_efectivo"), 800);
+  assert.equal(totalBalance(), total);
 });

@@ -134,10 +134,10 @@ function monthLabel(month) {
 
 function defaultRow(c) {
   const next = nextMonth(currentMonth());
-  const d = getBudgetDefault(next, c.id);
+  const currentDefault = getBudgetDefault(next, c.id);
   return `<div class="flex items-center justify-between gap-3">
     <label class="text-sm" for="def_${c.id}">${c.name}</label>
-    <input type="number" step="1" min="0" id="def_${c.id}" aria-label="Estimado por defecto de ${c.name}" class="default-input ${cx.input} w-32" data-cat="${c.id}" value="${d ? Math.abs(d.amount) : 0}" />
+    <input type="number" step="1" min="0" id="def_${c.id}" aria-label="Estimado por defecto de ${c.name}" class="default-input ${cx.input} w-32" data-cat="${c.id}" value="${currentDefault ? Math.abs(currentDefault.amount) : 0}" />
   </div>`;
 }
 

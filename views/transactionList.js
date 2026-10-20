@@ -12,9 +12,7 @@ import {
   deleteTransfer,
   isPairedTransfer,
   accountHasPocket,
-  accountBalance,
-  pocketBalance,
-  availableBalance,
+  transferableBalance,
   todayIso,
   POCKET_SAVINGS,
   getRates,
@@ -182,7 +180,7 @@ export function openTransferForm({ onSaved, onRerender }) {
           ]
         : [{ value: a.id, label: `${a.name} (${a.currency})` }]
     )
-    .map((o) => `<option value="${o.value}">${o.label}</option>`)
+    .map((option) => `<option value="${option.value}">${option.label}</option>`)
     .join("");
   const parse = (v) => {
     const [accountId, pocket] = String(v).split("|");
@@ -208,45 +206,42 @@ export function openTransferForm({ onSaved, onRerender }) {
       </div>
     `,
     onMount: (form) => {
-      const f = (n) => form.querySelector(`[name="${n}"]`);
+      const field = (n) => form.querySelector(`[name="${n}"]`);
       // Por defecto "Hacia" es la segunda opcion para que origen y destino no coincidan.
-      if (f("to").options.length > 1) f("to").selectedIndex = 1;
+      if (field("to").options.length > 1) field("to").selectedIndex = 1;
       // Saldo que hay hoy en el origen elegido (cuenta, su parte Disponible o su bolsillo de Ahorro).
       const originBalance = () => {
-        const o = parse(f("from").value);
-        const acc = accountById(o.accountId);
-        if (!acc) return 0;
-        const bal = o.pocket ? pocketBalance(acc.id) : accountHasPocket(acc) ? availableBalance(acc.id) : accountBalance(acc.id);
-        return acc.currency === "COP" ? Math.round(bal) : Math.round(bal * 100) / 100;
+        const origin = parse(field("from").value);
+        return transferableBalance(origin.accountId, origin.pocket);
       };
       const sync = () => {
-        const from = accountById(parse(f("from").value).accountId);
-        const to = accountById(parse(f("to").value).accountId);
+        const from = accountById(parse(field("from").value).accountId);
+        const to = accountById(parse(field("to").value).accountId);
         const cross = !!from && !!to && from.currency !== to.currency;
         form.querySelector("#trCur").textContent = from?.currency || "COP";
         // "Todo": el monto sigue al saldo del origen (solo lectura) hasta que se desmarca.
         const all = form.querySelector("#trAll");
         const bal = originBalance();
         form.querySelector("#trAllHint").textContent = `(${currency(bal, from?.currency)})`;
-        f("amount").readOnly = all.checked;
-        if (all.checked) f("amount").value = bal > 0 ? bal : "";
+        field("amount").readOnly = all.checked;
+        if (all.checked) field("amount").value = bal > 0 ? bal : "";
         form.querySelector("#trRateField").hidden = !cross;
         form.querySelector("#trDescField").hidden = cross;
-        f("rate").required = cross;
-        if (cross && !Number(f("rate").value)) {
-          const r = getRates();
-          f("rate").value = (from.currency === "USD" ? r.sell : r.buy) || usdValuationRate() || "";
+        field("rate").required = cross;
+        if (cross && !Number(field("rate").value)) {
+          const rates = getRates();
+          field("rate").value = (from.currency === "USD" ? rates.sell : rates.buy) || usdValuationRate() || "";
         }
-        const amt = Number(f("amount").value);
-        const fx = Number(f("rate").value);
+        const amt = Number(field("amount").value);
+        const fx = Number(field("rate").value);
         form.querySelector("#trPreview").textContent =
           cross && amt > 0 && fx > 0
             ? `Recibirías ≈ ${from.currency === "USD" ? currency(amt * fx) : currency(amt / fx, "USD")}`
             : "";
       };
       form.querySelector("#trAll").addEventListener("change", sync);
-      ["from", "to"].forEach((n) => f(n).addEventListener("change", sync));
-      ["amount", "rate"].forEach((n) => f(n).addEventListener("input", sync));
+      ["from", "to"].forEach((n) => field(n).addEventListener("change", sync));
+      ["amount", "rate"].forEach((n) => field(n).addEventListener("input", sync));
       sync();
     },
     onSubmit: (values, close) => {
