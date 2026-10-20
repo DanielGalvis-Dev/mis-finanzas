@@ -2,7 +2,7 @@
 
 Se recorre en `http://localhost:8081` con teclado y navegador (Ctrl+Shift+R antes de empezar, por el caché del service worker). El dev marca PASS o FAIL en cada ítem. Los Niveles 4 y 5 no aplican (sin backend ni BD propia).
 
-Estado: los ítems del 20/10/2026 están en PASS (el dev los recorrió y reportó que todo está bien). La sección «Cierre del modal y avisos (todos los formularios)» se agregó después y está **pendiente de marcar**.
+Estado: **todos los ítems en PASS**. El dev recorrió el checklist el 20/10/2026 (incluida la sección de cierre del modal y avisos, probada después de la recarga forzada) y reportó que los formularios quedaron bien.
 
 ## Transferir entre cuentas (`schema_transferir.md`)
 
@@ -39,17 +39,17 @@ El dev reportó el resultado de todos los ítems como PASS.
 - [x] Movimiento: elegir Bancolombia muestra «Bolsillo» (Disponible / Ahorro); elegir Efectivo lo oculta.
 - [x] Cuenta: marcar «Tiene bolsillo de ahorro» muestra el saldo inicial del bolsillo; el clic en su texto marca la casilla.
 
-## Cierre del modal y avisos (todos los formularios) — pendiente de marcar
+## Cierre del modal y avisos (todos los formularios)
 
 Probar en Transferir, Agregar movimiento y Agregar categoría.
 
-- [ ] Abrir el formulario, no escribir nada, clic fuera del diálogo → se cierra.
-- [ ] Escribir algo y hacer clic fuera → aparece la alerta «Si sales ahora se perderá lo que escribiste…»; «Seguir editando» conserva todo, «Salir sin guardar» cierra.
-- [ ] Con algo escrito, pulsar Escape → aparece la misma alerta.
-- [ ] Sin escribir nada, pulsar Escape → se cierra de inmediato.
-- [ ] El botón Cancelar siempre cierra.
-- [ ] Registrar un movimiento → aviso «Movimiento registrado»; editarlo → «Movimiento actualizado»; borrarlo (con confirmación) → «Movimiento eliminado».
-- [ ] Registrar una transferencia → «Transferencia registrada»; borrarla (con confirmación) → «Transferencia eliminada».
-- [ ] Agregar, editar y borrar una cuenta y una categoría → avisos «Cuenta/Categoría agregada/actualizada/eliminada».
-- [ ] Ajustes › Presupuesto por defecto: guardar un valor → aviso con el mes desde el que aplica, y Tab sigue pasando al siguiente campo.
-- [ ] Los avisos desaparecen solos (~2,5 s) y no bloquean la pantalla.
+- [x] Abrir el formulario, no escribir nada, clic fuera del diálogo → se cierra.
+- [x] Escribir algo y hacer clic fuera → aparece la alerta «Si sales ahora se perderá lo que escribiste…»; «Seguir editando» conserva todo, «Salir sin guardar» cierra.
+- [x] Con algo escrito, pulsar Escape → aparece la misma alerta.
+- [x] Sin escribir nada, pulsar Escape → se cierra de inmediato.
+- [x] El botón Cancelar siempre cierra.
+- [x] Registrar un movimiento → aviso «Movimiento registrado»; editarlo → «Movimiento actualizado»; borrarlo (con confirmación) → «Movimiento eliminado».
+- [x] Registrar una transferencia → «Transferencia registrada»; borrarla (con confirmación) → «Transferencia eliminada».
+- [x] Agregar, editar y borrar una cuenta y una categoría → avisos «Cuenta/Categoría agregada/actualizada/eliminada».
+- [x] Ajustes › Presupuesto por defecto: guardar un valor → aviso con el mes desde el que aplica, y Tab sigue pasando al siguiente campo.
+- [x] Los avisos desaparecen solos (~2,5 s) y no bloquean la pantalla.
