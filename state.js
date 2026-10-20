@@ -179,6 +179,19 @@ export function addConversion({ date, fromAccountId, toAccountId, amountFrom, ra
 // un solo registro para el usuario, dos movimientos espejo para los saldos. Ninguno cuenta en
 // Presupuesto/Total/Graficas por categoria (categoryId null + excludeFromCategoryTotals).
 // El pago de la tarjeta de credito es una transferencia hacia la cuenta `credit`.
+// Descripcion por defecto de una transferencia: «Transferencia Origen → Destino» (con «› Ahorro» si es el bolsillo).
+export function transferDescription(from, to) {
+  const label = ({ accountId, pocket } = {}) => {
+    const account = accountById(accountId);
+    return account ? (pocket ? `${account.name} › Ahorro` : account.name) : "—";
+  };
+  return `Transferencia ${label(from)} → ${label(to)}`;
+}
+// Valores por defecto del formulario Transferir: fecha de hoy (hora local) y descripcion si el usuario no escribe una.
+export function transferDefaults({ from, to, description, now = new Date() }) {
+  return { date: todayIso(now), description: (description || "").trim() || transferDescription(from, to) };
+}
+
 export function addTransfer({ date, fromAccountId, fromPocket, toAccountId, toPocket, amount, description }) {
   const from = accountById(fromAccountId);
   const to = accountById(toAccountId);
@@ -188,8 +201,7 @@ export function addTransfer({ date, fromAccountId, fromPocket, toAccountId, toPo
   if (!from || !to || from.currency !== to.currency || !(amt > 0) || !date) return false;
   if (from.id === to.id && sourcePocket === targetPocket) return false;
   if ((sourcePocket && !accountHasPocket(from)) || (targetPocket && !accountHasPocket(to))) return false;
-  const label = (acc, pocket) => (pocket ? `${acc.name} › Ahorro` : acc.name);
-  const desc = (description || "").trim() || `Transferencia ${label(from, sourcePocket)} → ${label(to, targetPocket)}`;
+  const desc = transferDefaults({ from: { accountId: from.id, pocket: sourcePocket }, to: { accountId: to.id, pocket: targetPocket }, description }).description;
   const transferId = uid("tr");
   const common = { date, categoryId: null, description: desc, type: "Transferencia", excludeFromCategoryTotals: true, transferId };
   addTransaction({ ...common, accountId: from.id, amount: -amt, ...(sourcePocket ? { pocket: sourcePocket } : {}) });
@@ -317,8 +329,8 @@ export function monthsWithData() {
 }
 
 // Mes actual en hora local (toISOString da UTC: de noche en Colombia ya es el mes/dia siguiente).
-export function currentMonth() {
-  return todayIso().slice(0, 7);
+export function currentMonth(now = new Date()) {
+  return todayIso(now).slice(0, 7);
 }
 
 // Rows for the monthly budget view: one per category, with estimado/real/balance.

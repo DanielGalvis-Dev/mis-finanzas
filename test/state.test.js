@@ -29,6 +29,8 @@ import {
   addCategory,
   transferableBalance,
   validateTransferInput,
+  currentMonth,
+  transferDefaults,
 } from "../state.js";
 
 function freshData() {
@@ -399,4 +401,38 @@ test("validateTransferInput: cuenta inexistente se rechaza", () => {
   setData(dataV1());
   const result = validateTransferInput({ from: origin("nope"), to: origin("acc_efectivo"), amount: 10 });
   assert.deepEqual(result, { ok: false, message: "Revisa los datos de la transferencia." });
+});
+
+// --- Fecha local (regresión del bug UTC) y valores por defecto de Transferir ---
+
+test("currentMonth usa la hora local: el 31/10 a las 22:00 sigue en octubre", () => {
+  assert.equal(currentMonth(new Date(2026, 9, 31, 22, 0)), "2026-10");
+  assert.equal(currentMonth(new Date(2026, 11, 31, 23, 30)), "2026-12");
+  assert.equal(currentMonth(new Date(2027, 0, 1, 0, 5)), "2027-01");
+});
+
+test("transferDefaults: la fecha es la de hoy en hora local, también de noche", () => {
+  assert.equal(transferDefaults({ now: new Date(2026, 9, 20, 22, 30) }).date, "2026-10-20");
+  assert.equal(transferDefaults({ now: new Date(2026, 9, 31, 23, 59) }).date, "2026-10-31");
+});
+
+test("transferDefaults: descripción vacía genera «Transferencia A → B» y respeta la que escribe el usuario", () => {
+  setData(dataV1());
+  const from = { accountId: "acc_banco" };
+  const to = { accountId: "acc_efectivo" };
+  assert.equal(transferDefaults({ from, to, description: "" }).description, "Transferencia Bancolombia → Efectivo");
+  assert.equal(transferDefaults({ from, to, description: "   " }).description, "Transferencia Bancolombia → Efectivo");
+  assert.equal(transferDefaults({ from, to, description: " Retiro " }).description, "Retiro");
+  assert.equal(
+    transferDefaults({ from: { accountId: "acc_banco" }, to: { accountId: "acc_banco", pocket: "ahorro" } }).description,
+    "Transferencia Bancolombia → Bancolombia › Ahorro"
+  );
+});
+
+test("addTransfer sin descripción usa el texto por defecto en ambos movimientos", () => {
+  setData(dataV1());
+  addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: 10 });
+  const [outgoing, incoming] = state.data.transactions.slice(-2);
+  assert.equal(outgoing.description, "Transferencia Bancolombia → Efectivo");
+  assert.equal(incoming.description, outgoing.description);
 });

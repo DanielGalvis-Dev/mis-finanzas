@@ -10,6 +10,7 @@ import {
   addConversion,
   addTransfer,
   validateTransferInput,
+  transferDefaults,
   deleteTransfer,
   isPairedTransfer,
   accountHasPocket,
@@ -173,7 +174,7 @@ export function openTransferForm({ onSaved, onRerender }) {
     alertDialog("Necesitas al menos dos cuentas para transferir (créalas en Ajustes).", "info");
     return;
   }
-  const today = todayIso();
+  const today = transferDefaults({}).date;
   // Cada opcion es "idCuenta" o "idCuenta|ahorro" (bolsillo de ahorro de esa cuenta).
   const options = accounts
     .flatMap((a) =>
