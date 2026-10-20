@@ -33,12 +33,20 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   const opener = document.activeElement;
   linkLabels(form);
 
+  // Foto de los campos al abrir (despues de onMount): permite saber si hay cambios sin guardar.
+  let initialState;
+  const hasChanges = () => initialState !== undefined && new URLSearchParams(new FormData(form)).toString() !== initialState;
+  // Escape y clic fuera no descartan en silencio lo que el usuario ya escribio.
+  const requestClose = async () => {
+    if (!hasChanges() || (await confirmDialog("Tienes cambios sin guardar. ¿Descartarlos?", { confirmText: "Descartar" }))) close();
+  };
+
   // Teclado: Escape cierra, Tab se queda dentro del dialogo y al cerrar el foco vuelve a donde estaba.
   const onKey = (e) => {
     if (document.querySelector(".swal2-container")) return; // un aviso de SweetAlert2 manda sobre el modal
     if (e.key === "Escape") {
       e.preventDefault();
-      close();
+      requestClose();
     } else if (e.key === "Tab") {
       const items = [...dialog.querySelectorAll("button, input, select, textarea, a[href]")].filter((el) => !el.disabled && el.offsetParent !== null);
       if (!items.length) return;
@@ -60,7 +68,7 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   };
   document.addEventListener("keydown", onKey);
 
-  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop && !hasChanges()) close(); });
   document.getElementById("modalCancel").addEventListener("click", close);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -73,6 +81,7 @@ export function openModal({ title, bodyHTML, onMount, onSubmit, submitLabel = "G
   }
 
   if (onMount) onMount(form);
+  initialState = new URLSearchParams(new FormData(form)).toString();
   // El foco entra al dialogo (sin abrir el teclado del celular); el primer Tab llega al primer campo.
   dialog.focus();
 }

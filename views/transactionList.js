@@ -9,6 +9,7 @@ import {
   accountCurrency,
   addConversion,
   addTransfer,
+  validateTransferInput,
   deleteTransfer,
   isPairedTransfer,
   accountHasPocket,
@@ -182,8 +183,8 @@ export function openTransferForm({ onSaved, onRerender }) {
     )
     .map((option) => `<option value="${option.value}">${option.label}</option>`)
     .join("");
-  const parse = (v) => {
-    const [accountId, pocket] = String(v).split("|");
+  const parse = (value) => {
+    const [accountId, pocket] = String(value).split("|");
     return { accountId, pocket: pocket || undefined };
   };
 
@@ -206,7 +207,7 @@ export function openTransferForm({ onSaved, onRerender }) {
       </div>
     `,
     onMount: (form) => {
-      const field = (n) => form.querySelector(`[name="${n}"]`);
+      const field = (fieldName) => form.querySelector(`[name="${fieldName}"]`);
       // Por defecto "Hacia" es la segunda opcion para que origen y destino no coincidan.
       if (field("to").options.length > 1) field("to").selectedIndex = 1;
       // Saldo que hay hoy en el origen elegido (cuenta, su parte Disponible o su bolsillo de Ahorro).
@@ -240,35 +241,28 @@ export function openTransferForm({ onSaved, onRerender }) {
             : "";
       };
       form.querySelector("#trAll").addEventListener("change", sync);
-      ["from", "to"].forEach((n) => field(n).addEventListener("change", sync));
-      ["amount", "rate"].forEach((n) => field(n).addEventListener("input", sync));
+      ["from", "to"].forEach((fieldName) => field(fieldName).addEventListener("change", sync));
+      ["amount", "rate"].forEach((fieldName) => field(fieldName).addEventListener("input", sync));
       sync();
     },
     onSubmit: (values, close) => {
       const from = parse(values.from);
       const to = parse(values.to);
-      const fromAcc = accountById(from.accountId);
-      const toAcc = accountById(to.accountId);
-      if (values.all && !(Number(values.amount) > 0)) return alertDialog("No hay saldo disponible en el origen para transferir.", "error");
-      if (from.accountId === to.accountId && from.pocket === to.pocket) return alertDialog("Elige cuentas distintas para el origen y el destino.", "error");
-      if (fromAcc && toAcc && fromAcc.currency !== toAcc.currency) {
-        if (from.pocket || to.pocket) return alertDialog("Entre monedas distintas no se puede usar el bolsillo de ahorro.", "error");
-        if (!addConversion({ date: values.date, fromAccountId: from.accountId, toAccountId: to.accountId, amountFrom: values.amount, rate: values.rate })) {
-          return alertDialog("Revisa los datos de la conversión.", "error");
-        }
-      } else if (
-        !addTransfer({
-          date: values.date,
-          fromAccountId: from.accountId,
-          fromPocket: from.pocket,
-          toAccountId: to.accountId,
-          toPocket: to.pocket,
-          amount: values.amount,
-          description: values.description,
-        })
-      ) {
-        return alertDialog("Revisa los datos de la transferencia.", "error");
-      }
+      const check = validateTransferInput({ from, to, amount: values.amount, rate: values.rate, all: !!values.all });
+      if (!check.ok) return alertDialog(check.message, "error");
+      const saved =
+        check.kind === "conversion"
+          ? addConversion({ date: values.date, fromAccountId: from.accountId, toAccountId: to.accountId, amountFrom: values.amount, rate: values.rate })
+          : addTransfer({
+              date: values.date,
+              fromAccountId: from.accountId,
+              fromPocket: from.pocket,
+              toAccountId: to.accountId,
+              toPocket: to.pocket,
+              amount: values.amount,
+              description: values.description,
+            });
+      if (!saved) return alertDialog(check.kind === "conversion" ? "Revisa los datos de la conversión." : "Revisa los datos de la transferencia.", "error");
       onSaved();
       close();
       onRerender();

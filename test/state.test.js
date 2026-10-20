@@ -28,6 +28,7 @@ import {
   getEstimate,
   addCategory,
   transferableBalance,
+  validateTransferInput,
 } from "../state.js";
 
 function freshData() {
@@ -345,4 +346,57 @@ test("setBudgetDefault normaliza: vacío a 0 y negativo a su valor absoluto en g
   assert.equal(getEstimate("2026-11", "seg"), -5000);
   setBudgetDefault("sal", 5000, "2026-11");
   assert.equal(getEstimate("2026-11", "sal"), 5000);
+});
+
+// --- validateTransferInput: reglas del formulario «Transferir» (schema_transferir.md) ---
+
+const origin = (accountId, pocket) => ({ accountId, pocket });
+
+test("validateTransferInput: transferencia válida entre cuentas de la misma moneda", () => {
+  setData(dataV1());
+  assert.deepEqual(validateTransferInput({ from: origin("acc_banco"), to: origin("acc_efectivo"), amount: "100" }), { ok: true, kind: "transfer" });
+  assert.deepEqual(validateTransferInput({ from: origin("acc_banco"), to: origin("acc_banco", "ahorro"), amount: 1 }), { ok: true, kind: "transfer" });
+});
+
+test("validateTransferInput: monto 0, negativo o vacío se rechaza (límite en 0)", () => {
+  setData(dataV1());
+  for (const amount of ["0", 0, "-5", "", undefined]) {
+    const result = validateTransferInput({ from: origin("acc_banco"), to: origin("acc_efectivo"), amount });
+    assert.deepEqual(result, { ok: false, message: "Revisa los datos de la transferencia." });
+  }
+});
+
+test("validateTransferInput: origen igual al destino se rechaza, pero distinto bolsillo de la misma cuenta no", () => {
+  setData(dataV1());
+  const same = validateTransferInput({ from: origin("acc_banco"), to: origin("acc_banco"), amount: 10 });
+  assert.deepEqual(same, { ok: false, message: "Elige cuentas distintas para el origen y el destino." });
+  assert.equal(validateTransferInput({ from: origin("acc_banco", "ahorro"), to: origin("acc_banco", "ahorro"), amount: 10 }).ok, false);
+  assert.equal(validateTransferInput({ from: origin("acc_banco", "ahorro"), to: origin("acc_banco"), amount: 10 }).ok, true);
+});
+
+test("validateTransferInput: «Todo» sin saldo avisa que no hay saldo disponible", () => {
+  setData(dataV1());
+  const result = validateTransferInput({ from: origin("acc_efectivo"), to: origin("acc_banco"), amount: "", all: true });
+  assert.deepEqual(result, { ok: false, message: "No hay saldo disponible en el origen para transferir." });
+  assert.equal(validateTransferInput({ from: origin("acc_banco"), to: origin("acc_efectivo"), amount: 800, all: true }).ok, true);
+});
+
+test("validateTransferInput: monedas distintas exigen tasa mayor a 0 y no admiten bolsillo", () => {
+  setData(dataV1());
+  addAccount({ name: "ARQ", type: "bank", initialBalance: 0, currency: "USD" });
+  const arq = state.data.accounts.at(-1).id;
+  assert.deepEqual(validateTransferInput({ from: origin(arq), to: origin("acc_banco"), amount: 5, rate: "3900" }), { ok: true, kind: "conversion" });
+  for (const rate of ["0", "", undefined]) {
+    assert.deepEqual(validateTransferInput({ from: origin(arq), to: origin("acc_banco"), amount: 5, rate }), { ok: false, message: "Revisa los datos de la conversión." });
+  }
+  assert.deepEqual(validateTransferInput({ from: origin(arq), to: origin("acc_banco", "ahorro"), amount: 5, rate: 3900 }), {
+    ok: false,
+    message: "Entre monedas distintas no se puede usar el bolsillo de ahorro.",
+  });
+});
+
+test("validateTransferInput: cuenta inexistente se rechaza", () => {
+  setData(dataV1());
+  const result = validateTransferInput({ from: origin("nope"), to: origin("acc_efectivo"), amount: 10 });
+  assert.deepEqual(result, { ok: false, message: "Revisa los datos de la transferencia." });
 });

@@ -34,7 +34,7 @@ export const SCHEMA_VERSION = 2;
 export const POCKET_SAVINGS = "ahorro";
 // Categorias de gasto libre (sin presupuesto fijo): solo se muestra lo gastado en el mes.
 const FREE_CATEGORY_NAMES = ["comida gatos", "gasolina", "otros", "pasajes"];
-const normName = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+const normName = (text) => String(text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 
 export function needsMigration(data) {
   return (data?.meta?.schemaVersion || 1) < SCHEMA_VERSION;
@@ -47,22 +47,22 @@ function migrateToV2(data) {
   data.categories.forEach((c) => {
     if (FREE_CATEGORY_NAMES.includes(normName(c.name))) c.noBudget = true;
   });
-  const sav = data.accounts.find((a) => a.id === "acc_ahorros") || data.accounts.find((a) => a.type === "savings");
+  const savingsAccount = data.accounts.find((a) => a.id === "acc_ahorros") || data.accounts.find((a) => a.type === "savings");
   const bank =
     data.accounts.find((a) => a.id === "acc_banco") ||
-    data.accounts.find((a) => a.type === "bank" && a.currency === BASE_CURRENCY && a !== sav);
-  if (sav && bank && sav !== bank && sav.currency === bank.currency) {
-    const savInitial = Number(sav.initialBalance) || 0;
-    bank.initialBalance = (Number(bank.initialBalance) || 0) + savInitial;
-    bank.savingsInitialBalance = (Number(bank.savingsInitialBalance) || 0) + savInitial;
+    data.accounts.find((a) => a.type === "bank" && a.currency === BASE_CURRENCY && a !== savingsAccount);
+  if (savingsAccount && bank && savingsAccount !== bank && savingsAccount.currency === bank.currency) {
+    const savingsInitial = Number(savingsAccount.initialBalance) || 0;
+    bank.initialBalance = (Number(bank.initialBalance) || 0) + savingsInitial;
+    bank.savingsInitialBalance = (Number(bank.savingsInitialBalance) || 0) + savingsInitial;
     bank.hasSavings = true;
     data.transactions.forEach((t) => {
-      if (t.accountId === sav.id) {
+      if (t.accountId === savingsAccount.id) {
         t.accountId = bank.id;
         t.pocket = POCKET_SAVINGS;
       }
     });
-    data.accounts = data.accounts.filter((a) => a !== sav);
+    data.accounts = data.accounts.filter((a) => a !== savingsAccount);
   }
   if (bank && normName(bank.name) === "cuenta bancaria") bank.name = "Bancolombia";
   data.meta.schemaVersion = SCHEMA_VERSION;
@@ -196,6 +196,27 @@ export function addTransfer({ date, fromAccountId, fromPocket, toAccountId, toPo
   addTransaction({ ...common, accountId: to.id, amount: amt, ...(targetPocket ? { pocket: targetPocket } : {}) });
   return true;
 }
+// Reglas del formulario "Transferir" (Nivel 3), sin DOM para poder probarlas. `from` y `to` son
+// { accountId, pocket }; `all` es la casilla «Todo». Devuelve { ok: true, kind: "transfer" | "conversion" }
+// o { ok: false, message } con el texto exacto del schema_transferir.md.
+export function validateTransferInput({ from, to, amount, rate, all }) {
+  const value = Number(amount);
+  if (all && !(value > 0)) return { ok: false, message: "No hay saldo disponible en el origen para transferir." };
+  if (from.accountId === to.accountId && (from.pocket || undefined) === (to.pocket || undefined)) {
+    return { ok: false, message: "Elige cuentas distintas para el origen y el destino." };
+  }
+  const fromAccount = accountById(from.accountId);
+  const toAccount = accountById(to.accountId);
+  if (!fromAccount || !toAccount) return { ok: false, message: "Revisa los datos de la transferencia." };
+  if (fromAccount.currency !== toAccount.currency) {
+    if (from.pocket || to.pocket) return { ok: false, message: "Entre monedas distintas no se puede usar el bolsillo de ahorro." };
+    if (!(value > 0) || !(Number(rate) > 0)) return { ok: false, message: "Revisa los datos de la conversión." };
+    return { ok: true, kind: "conversion" };
+  }
+  if (!(value > 0)) return { ok: false, message: "Revisa los datos de la transferencia." };
+  return { ok: true, kind: "transfer" };
+}
+
 // Borra una transferencia o conversion completa (ambos lados).
 export function deleteTransfer(tx) {
   const key = tx.transferId ? "transferId" : tx.conversionId ? "conversionId" : null;
@@ -210,8 +231,8 @@ export function getBudget(month, categoryId) {
 }
 // Los gastos se guardan en negativo (igual que sus movimientos); el usuario escribe el monto en positivo.
 function signedBudget(categoryId, value) {
-  const n = Number(value) || 0;
-  return categoryById(categoryId)?.kind === "Salida" ? -Math.abs(n) || 0 : n; // "|| 0" evita -0
+  const amount = Number(value) || 0;
+  return categoryById(categoryId)?.kind === "Salida" ? -Math.abs(amount) || 0 : amount; // "|| 0" evita -0
 }
 export function setBudget(month, categoryId, estimated) {
   const value = signedBudget(categoryId, estimated);
@@ -233,8 +254,8 @@ export function getEstimate(month, categoryId) {
   return getBudgetDefault(month, categoryId)?.amount ?? 0;
 }
 export function nextMonth(month) {
-  const [y, m] = month.split("-").map(Number);
-  const monthIndex = y * 12 + m; // (m - 1) + 1
+  const [year, monthNumber] = month.split("-").map(Number);
+  const monthIndex = year * 12 + monthNumber; // (monthNumber - 1) + 1
   return `${Math.floor(monthIndex / 12)}-${String((monthIndex % 12) + 1).padStart(2, "0")}`;
 }
 // Cambia el valor por defecto SOLO para los meses siguientes al actual: el mes en curso y los
@@ -266,7 +287,7 @@ export function pocketBalance(accountId, pocket = POCKET_SAVINGS) {
   const base = acc ? Number(acc.savingsInitialBalance) || 0 : 0;
   const sum = state.data.transactions
     .filter((t) => t.accountId === accountId && t.pocket === pocket)
-    .reduce((s, t) => s + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount), 0);
   return base + sum;
 }
 // Lo que queda fuera del bolsillo: saldo total menos ahorro.
@@ -333,11 +354,11 @@ export function savingsSeries() {
   const months = monthsWithData();
   const pockets = state.data.accounts.filter((a) => a.currency === BASE_CURRENCY && (accountHasPocket(a) || state.data.transactions.some((t) => t.accountId === a.id && t.pocket === POCKET_SAVINGS)));
   const ids = new Set(pockets.map((a) => a.id));
-  let running = pockets.reduce((s, a) => s + (Number(a.savingsInitialBalance) || 0), 0);
+  let running = pockets.reduce((sum, account) => sum + (Number(account.savingsInitialBalance) || 0), 0);
   return months.map((month) => {
     const monthSum = state.data.transactions
       .filter((t) => ids.has(t.accountId) && t.pocket === POCKET_SAVINGS && t.date.slice(0, 7) === month)
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((sum, t) => sum + Number(t.amount), 0);
     running += monthSum;
     return { month, cumulative: running };
   });
@@ -346,7 +367,7 @@ export function savingsSeries() {
 export function savingsContribution(month, accountId) {
   return state.data.transactions
     .filter((t) => t.pocket === POCKET_SAVINGS && (!accountId || t.accountId === accountId) && t.date.slice(0, 7) === month)
-    .reduce((s, t) => s + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 }
 // Cuentas con bolsillo de ahorro y su saldo total (para mostrar "Bancolombia › Ahorro").
 export function pocketAccounts() {

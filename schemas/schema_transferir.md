@@ -55,6 +55,8 @@
 - **Efecto al guardar:** un solo registro para el usuario; en los datos son dos movimientos espejo con `transferId` (o `conversionId` y `fxRate` si hay conversión), `categoryId: null` y `excludeFromCategoryTotals: true` en ambos, así que no cuentan en Presupuesto, Total ni Gráficas por categoría.
 - **Casos de uso:** efectivo ⇄ banco, pago de la tarjeta de crédito (banco → tarjeta), Disponible ⇄ Ahorro de Bancolombia, y conversión USD ⇄ COP.
 - **Edición:** una transferencia no se edita; al tocarla en la lista se ofrece borrarla completa (ambos lados).
+- **Reglas de validación:** `validateTransferInput` en `state.js` concentra las reglas del Nivel 3 (monto mayor a 0, origen distinto de destino, «Todo» con saldo, tasa mayor a 0 y sin bolsillo entre monedas distintas) y tiene pruebas unitarias; el formulario solo muestra su mensaje.
+- **Cierre del modal:** con campos modificados, el clic fuera se ignora y Escape pide confirmar el descarte (`modal.js`).
 - **Vista previa:** si hay conversión, debajo se muestra «Recibirías ≈ …», recalculado al cambiar monto o tasa; no es un campo.
 
 ### Versión y revisión (del schema de ese formulario, no de esta plantilla)

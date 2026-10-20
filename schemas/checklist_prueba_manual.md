@@ -2,7 +2,7 @@
 
 Se recorre en `http://localhost:8081` con teclado y navegador (Ctrl+Shift+R antes de empezar, por el caché del service worker). El dev marca PASS o FAIL en cada ítem. Los Niveles 4 y 5 no aplican (sin backend ni BD propia).
 
-Estado: **todos los ítems en PASS**. El dev recorrió el checklist completo el 20/10/2026 y reportó que todo está bien.
+Estado: los ítems del 20/10/2026 están en PASS (el dev los recorrió y reportó que todo está bien). La sección «Cierre del modal (todos los formularios)» se agregó después y está **pendiente de marcar**.
 
 ## Transferir entre cuentas (`schema_transferir.md`)
 
@@ -38,3 +38,13 @@ El dev reportó el resultado de todos los ítems como PASS.
 
 - [x] Movimiento: elegir Bancolombia muestra «Bolsillo» (Disponible / Ahorro); elegir Efectivo lo oculta.
 - [x] Cuenta: marcar «Tiene bolsillo de ahorro» muestra el saldo inicial del bolsillo; el clic en su texto marca la casilla.
+
+## Cierre del modal (todos los formularios) — pendiente de marcar
+
+Probar en Transferir, Agregar movimiento y Agregar categoría.
+
+- [ ] Abrir el formulario, no escribir nada, clic fuera del diálogo → se cierra.
+- [ ] Abrir el formulario, escribir algo y clic fuera del diálogo → NO se cierra y lo escrito se conserva.
+- [ ] Con algo escrito, pulsar Escape → pide «Tienes cambios sin guardar. ¿Descartarlos?»; Cancelar mantiene el formulario y Descartar lo cierra.
+- [ ] Sin escribir nada, pulsar Escape → se cierra de inmediato.
+- [ ] El botón Cancelar siempre cierra.

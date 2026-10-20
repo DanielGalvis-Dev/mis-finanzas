@@ -4,7 +4,7 @@ import { cx, amountClass } from "../ui.js";
 let selectedMonth = null;
 
 // Solo los gastos: Salario (Entrada) y Ahorro (bolsillo de Bancolombia) no van en la tabla.
-const isExpenseRow = (r) => r.category.kind === "Salida";
+const isExpenseRow = (row) => row.category.kind === "Salida";
 
 export function renderPresupuesto(container, { markDirty }) {
   if (!selectedMonth) {
@@ -48,7 +48,7 @@ export function renderPresupuesto(container, { markDirty }) {
 }
 
 // Gasto en positivo: "Estimado" y "Gastado" son magnitudes; el balance es lo que sobra (+) o se pasó (−).
-const money = (n) => currency(Math.abs(n));
+const money = (amount) => currency(Math.abs(amount));
 const noBudgetCell = `<span class="text-mute">—</span>`;
 
 function renderDesktopTable(rows, totals) {

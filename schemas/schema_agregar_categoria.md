@@ -37,7 +37,7 @@
 - **`noBudget` sin mensaje de error:** es una casilla, no puede quedar en un estado inválido. Si se marca en una categoría que no es de tipo Salida no pasa nada: Presupuesto solo muestra categorías de Salida.
 - **Marca automática:** la migración de datos v1→v2 marca `noBudget` en las categorías cuyo nombre sea Comida Gatos, Gasolina, Otros o Pasajes (sin tildes ni mayúsculas); después se edita aquí.
 - **Borrado:** al editar, el botón Borrar pide confirmación; los movimientos de la categoría borrada no se eliminan y quedan sin categoría.
-- **Modal compartido:** el cierre con Escape o con clic fuera del diálogo lo define `modal.js` y es común a todos los formularios de la app; no cambia con este schema.
+- **Cierre del modal:** Escape o clic fuera con campos modificados no descartan en silencio: el clic fuera se ignora y Escape pide confirmar «Tienes cambios sin guardar. ¿Descartarlos?». Sin cambios, cierran de inmediato. Lo define `modal.js` y vale para todos los formularios de la app.
 
 ### Versión y revisión (del schema de ese formulario, no de esta plantilla)
 
