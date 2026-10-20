@@ -20,7 +20,8 @@
 | date | Fecha | Sí | — | Fecha de hoy (hora local) | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
 | from | Selección (`idCuenta` o `idCuenta\|ahorro`) | Sí | Una cuenta existente o el bolsillo de ahorro de una cuenta que lo tenga | Primera opción de la lista | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
 | to | Selección (`idCuenta` o `idCuenta\|ahorro`) | Sí | Igual que `from`, pero distinto de `from` | Segunda opción de la lista | No | from | Origen y destino no pueden ser la misma cuenta y bolsillo | Alerta "Elige cuentas distintas para el origen y el destino." | Front |
-| amount | Numérico decimal (en la moneda de la cuenta de origen) | Sí | Mín 0, paso 0.01; debe ser mayor a 0 | Vacío | No | from | Se expresa en la moneda de la cuenta de origen | Mensaje nativo del navegador para campo requerido o valor menor a 0; si es 0, alerta "Revisa los datos de la transferencia." | Front |
+| amount | Numérico decimal (en la moneda de la cuenta de origen) | Sí | Mín 0, paso 0.01; debe ser mayor a 0 | Vacío (o el saldo transferible del origen si «Todo» está marcada) | No | from, all | Se expresa en la moneda de la cuenta de origen; con «Todo» marcada es de solo lectura y sigue al saldo del origen | Mensaje nativo del navegador para campo requerido o valor menor a 0; si es 0, alerta "Revisa los datos de la transferencia." | Front |
+| all | Casilla («Todo») | No | — | Desmarcada | No | from | Al marcarla, `amount` toma el saldo transferible del origen (bolsillo de ahorro, parte disponible de una cuenta con bolsillo, o saldo de la cuenta) y se actualiza si cambia `from`; si ese saldo no es mayor a 0, alerta «No hay saldo disponible en el origen para transferir.» | Alerta «No hay saldo disponible en el origen para transferir.» | Front |
 | rate | Numérico decimal (COP por 1 USD) | Sí, solo si las monedas de `from` y `to` difieren | Mín 0, paso 0.01; debe ser mayor a 0 | Tasa de venta (USD→COP) o de compra (COP→USD) guardada; si no hay, la de valoración o vacío | No | from, to | Solo se muestra si las monedas difieren; entre monedas distintas no se permite el bolsillo de ahorro | Mensaje nativo del navegador para campo requerido; alerta "Revisa los datos de la conversión." | Front |
 | description | Texto | No | — | Vacío (se genera «Transferencia A → B») | No | from, to | Se oculta si las monedas difieren (la conversión genera su propia descripción) | — | Front |
 
@@ -31,9 +32,10 @@
 | date | 1 | No | — |
 | from | 2 | No | — |
 | to | 3 | No | — |
-| amount | 4 | No | — |
-| rate | 5 | No (oculto si las monedas son iguales) | — |
-| description | 6 | No (oculto si las monedas difieren) | — |
+| amount | 4 | No (solo lectura si «Todo» está marcada) | — |
+| all | 5 | No | — |
+| rate | 6 | No (oculto si las monedas son iguales) | — |
+| description | 7 | No (oculto si las monedas difieren) | — |
 
 ### Tabla 3 — Pre-llenado
 
@@ -43,6 +45,7 @@
 | from | No | — | — |
 | to | No | — | — |
 | amount | No | — | — |
+| all | No | — | — |
 | rate | Sí | Información de BD | Sí |
 | description | No | — | — |
 
@@ -59,6 +62,6 @@
 | Campo | Valor |
 |---|---|
 | Versión del schema | v1.0 |
-| Fecha de aprobación | Pendiente |
-| Aprobado por | Pendiente |
+| Fecha de aprobación | 20/10/2026 |
+| Aprobado por | Desarrollador (probó el formulario) |
 | Próxima revisión | Cuando el formulario cambie de campos o de reglas |

@@ -88,7 +88,10 @@ export function renderConfig(container, { markDirty, onSignOut, lastSaved, onRel
     input.addEventListener("change", () => {
       setBudgetDefault(input.dataset.cat, input.value);
       markDirty();
+      // Al re-dibujar se pierde el foco: se devuelve al campo que tenia (el siguiente al pulsar Tab).
+      const next = document.activeElement?.classList?.contains("default-input") ? document.activeElement.dataset.cat : null;
       rerender();
+      if (next) container.querySelector(`.default-input[data-cat="${next}"]`)?.focus();
     })
   );
 

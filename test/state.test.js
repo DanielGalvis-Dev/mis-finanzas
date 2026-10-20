@@ -336,3 +336,13 @@ test("«Todo» + addTransfer deja el origen en cero sin tocar el total", () => {
   assert.equal(accountBalance("acc_efectivo"), 800);
   assert.equal(totalBalance(), total);
 });
+
+test("setBudgetDefault normaliza: vacío a 0 y negativo a su valor absoluto en gastos", () => {
+  setData(dataV1());
+  setBudgetDefault("seg", "", "2026-11");
+  assert.equal(getEstimate("2026-11", "seg"), 0);
+  setBudgetDefault("seg", -5000, "2026-11");
+  assert.equal(getEstimate("2026-11", "seg"), -5000);
+  setBudgetDefault("sal", 5000, "2026-11");
+  assert.equal(getEstimate("2026-11", "sal"), 5000);
+});

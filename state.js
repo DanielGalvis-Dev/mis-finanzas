@@ -211,7 +211,7 @@ export function getBudget(month, categoryId) {
 // Los gastos se guardan en negativo (igual que sus movimientos); el usuario escribe el monto en positivo.
 function signedBudget(categoryId, value) {
   const n = Number(value) || 0;
-  return categoryById(categoryId)?.kind === "Salida" ? -Math.abs(n) : n;
+  return categoryById(categoryId)?.kind === "Salida" ? -Math.abs(n) || 0 : n; // "|| 0" evita -0
 }
 export function setBudget(month, categoryId, estimated) {
   const value = signedBudget(categoryId, estimated);
