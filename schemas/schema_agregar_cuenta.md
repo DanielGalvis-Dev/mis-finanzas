@@ -7,7 +7,7 @@
 | Formulario | Agregar / editar cuenta (`openAccountForm` en `views/config.js`) |
 | Proyecto / repo | mis-finanzas |
 | Protocolo de referencia | PROTOCOLO_DE_VALIDACION_DE_FORMULARIOS_v1.1.md |
-| Campos nuevos o modificados | `cutDay` y `payDay` (nuevos, solo para tarjeta de crédito) |
+| Campos nuevos o modificados | `hasSavings` y `savingsInitialBalance` (nuevos, bolsillo de ahorro); antes `cutDay` y `payDay` (solo para tarjeta de crédito) |
 | ¿Vive en un modal? | Sí |
 | ¿Algún campo se pre-llena automáticamente (Extracción IA, información de BD, o ambos)? | No |
 | Responsable (Desarrollador) | Desarrollador |
@@ -18,7 +18,9 @@
 | Campo | Tipo de dato | Obligatorio | Rango/Límite | Valor por defecto | Único | Depende de | Regla de dependencia | Mensaje de error | Capas aplicables (Front/Back/BD) |
 |---|---|---|---|---|---|---|---|---|---|
 | name | Texto | Sí | — | Vacío (al crear) | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
-| type | Selección (cash, bank, savings, credit, custom) | Sí | Solo esos cinco valores | cash (al crear) | No | — | — | — | Front |
+| type | Selección (cash, bank, savings, credit, custom) | Sí | Solo esos cinco valores; `savings` solo aparece al editar una cuenta que ya tenga ese tipo (el ahorro nuevo es un bolsillo de la cuenta bancaria) | cash (al crear) | No | — | — | — | Front |
+| hasSavings | Casilla (sí/no) | No | — | No | No | — | Marca la cuenta con bolsillo «Ahorro» (p. ej. Bancolombia); el bolsillo es parte del saldo de la cuenta, no se suma aparte | — | Front |
+| savingsInitialBalance | Numérico decimal | No | Paso 0.01 | 0 | No | hasSavings | Solo visible y guardado si hasSavings está marcada; es la parte de `initialBalance` que ya está en el bolsillo | — | Front |
 | currency | Selección (COP, USD) | Sí | Solo COP o USD | COP | No | — | Si llega otro valor, el estado lo normaliza a COP | — | Front |
 | initialBalance | Numérico decimal | Sí | Paso 0.01, sin mínimo (puede ser negativo, p. ej. deuda de tarjeta) | 0 | No | currency | Se expresa en la moneda de la cuenta | Mensaje nativo del navegador para campo requerido | Front |
 | creditLimit | Numérico entero | No | Paso 1 | 0 | No | type | Solo visible y guardado si type es credit | — | Front |
@@ -33,9 +35,11 @@
 | type | 2 | No | — |
 | currency | 3 | No | — |
 | initialBalance | 4 | No | — |
-| creditLimit | 5 | No | — |
-| cutDay | 6 | No | — |
-| payDay | 7 | No | — |
+| hasSavings | 5 | No | — |
+| savingsInitialBalance | 6 | No (oculto si hasSavings no está marcada) | — |
+| creditLimit | 7 | No | — |
+| cutDay | 8 | No | — |
+| payDay | 9 | No | — |
 
 ### Notas y justificaciones
 

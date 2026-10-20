@@ -1,5 +1,5 @@
-import { state, currency, accountBalance, totalBalance, transactionsSorted, usdValuationRate, toBase } from "../state.js";
-import { openTransactionForm, renderTransactionList, bindTransactionList } from "./transactionList.js";
+import { state, currency, accountBalance, totalBalance, transactionsSorted, usdValuationRate, toBase, accountHasPocket, availableBalance, pocketBalance } from "../state.js";
+import { openTransactionForm, openTransferForm, renderTransactionList, bindTransactionList } from "./transactionList.js";
 import { cx, amountClass } from "../ui.js";
 import { cardAlertBannerHTML, cardPanelsHTML, bindCardPanels } from "./tarjeta.js";
 
@@ -27,10 +27,11 @@ export function renderDashboard(container, { markDirty }) {
         .map((a) => {
           const bal = accountBalance(a.id);
           return `
-          <div class="flex items-baseline justify-between gap-4 py-4">
+          <div class="flex items-baseline justify-between gap-4 px-4 py-4">
             <div>
               <div class="font-medium">${a.name}</div>
               ${a.type === "credit" ? `<div class="text-[13px] text-mute mt-0.5">Cupo ${currency(a.creditLimit || 0)}</div>` : ""}
+              ${accountHasPocket(a) ? `<div class="text-[13px] text-mute mt-0.5">Disponible ${currency(availableBalance(a.id), a.currency)} · Ahorro ${currency(pocketBalance(a.id), a.currency)}</div>` : ""}
             </div>
             <div class="text-right">
               <div class="text-xl font-light ${amountClass(bal)}">${currency(bal, a.currency)}</div>
@@ -45,7 +46,10 @@ export function renderDashboard(container, { markDirty }) {
 
     <div class="flex items-center justify-between mt-12 mb-3">
       <div class="text-sm font-medium text-mute">Movimientos recientes</div>
-      <button class="${cx.btnPrimary} ${cx.btnSmall}" id="quickAddBtn">Agregar movimiento</button>
+      <div class="flex items-center gap-2">
+        <button class="${cx.btn} ${cx.btnSmall}" id="quickTransferBtn">Transferir</button>
+        <button class="${cx.btnPrimary} ${cx.btnSmall}" id="quickAddBtn">Agregar movimiento</button>
+      </div>
     </div>
     <div>
       ${renderTransactionList(recent)}
@@ -54,6 +58,10 @@ export function renderDashboard(container, { markDirty }) {
 
   container.querySelector("#quickAddBtn").addEventListener("click", () => {
     openTransactionForm({ onSaved: markDirty, onRerender: rerender });
+  });
+
+  container.querySelector("#quickTransferBtn").addEventListener("click", () => {
+    openTransferForm({ onSaved: markDirty, onRerender: rerender });
   });
 
   bindCardPanels(container, rerender);

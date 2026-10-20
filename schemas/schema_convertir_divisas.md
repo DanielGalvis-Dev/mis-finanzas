@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Formulario | Convertir divisas (`openConversionForm` en `views/transactionList.js`) |
+| Formulario | Convertir divisas — **reemplazado desde el 20/10/2026 por "Transferir entre cuentas" (`openTransferForm`, ver `schema_transferir.md`)**, que pide la tasa cuando las monedas difieren; los campos y reglas de abajo siguen valiendo para ese caso |
 | Proyecto / repo | mis-finanzas |
 | Protocolo de referencia | PROTOCOLO_DE_VALIDACION_DE_FORMULARIOS_v1.1.md |
 | Campos nuevos o modificados | Todos (formulario nuevo) |

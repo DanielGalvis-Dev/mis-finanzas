@@ -164,9 +164,9 @@ async function findDataFile() {
   return json.files && json.files.length ? json.files[0] : null;
 }
 
-async function createDataFile(initialData) {
+async function createDataFile(initialData, name = DATA_FILE_NAME) {
   const boundary = "finanzas_boundary_" + Math.random().toString(36).slice(2);
-  const metadata = { name: DATA_FILE_NAME, mimeType: "application/json" };
+  const metadata = { name, mimeType: "application/json" };
   const body =
     `--${boundary}\r\n` +
     `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
@@ -210,6 +210,13 @@ export async function loadOrCreateData(seedData) {
   const created = await createDataFile(seedData);
   fileId = created.id;
   return { data: seedData, created: true };
+}
+
+// Copia de seguridad en el Drive del usuario antes de migrar el esquema (p. ej. v1 -> v2).
+// Si falla, se lanza el error para no migrar ni guardar sin respaldo.
+export async function backupDataFile(data, version = 1) {
+  const created = await createDataFile(data, `finanzas-data-backup-v${version}.json`);
+  return created.id;
 }
 
 export function getFileId() {

@@ -48,8 +48,12 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 ## Modelo de datos (el archivo que vive en Drive)
 
 ```
-{ meta, accounts[], categories[], transactions[], budgets[], transfers[] }
+{ meta, accounts[], categories[], transactions[], budgets[], budgetDefaults[], transfers[] }
 ```
+
+`meta.schemaVersion` = **2**. Los archivos viejos (v1) se migran en `setData` (`migrateToV2`, idempotente) y, antes de
+migrar, `app.js` guarda una copia `finanzas-data-backup-v1.json` en el Drive del usuario (`backupDataFile` en
+`drive.js`); si el respaldo falla se aborta la carga. Cualquier cambio de modelo futuro: sube la versión y migra ahí.
 
 - **meta**: `{ ..., baseCurrency: "COP", rates (se refrescan solas): { USD_COP: { buy, sell, marketRef, updatedAt } } }`.
   `sell` = COP que recibes al convertir 1 USD (venta ARQ); `buy` = COP que pagas por 1 USD.
@@ -57,17 +61,30 @@ Origen: reemplaza un Google Sheet (`FINANZAS_PERSONALES.xlsx`, en la carpeta pad
 - **accounts**: `{ id, name, type, currency, initialBalance, creditLimit? }`. `currency` ∈ COP/USD
   (cuentas viejas sin campo = COP, normalizado en `setData`; los movimientos heredan la moneda de la cuenta). `type` ∈
   cash/bank/savings/credit/custom. El balance mostrado = `initialBalance + suma de las
-  transacciones de esa cuenta`. Cuentas actuales del usuario: Efectivo, Cuenta bancaria
-  (Bancolombia), Ahorros (bolsillo de ahorros del mismo Bancolombia — **no es Nequi**),
-  Tarjeta de crédito (`creditLimit` es solo referencia, nunca suma al total).
-- **categories**: `{ id, name, kind }`, `kind` ∈ Entrada/Salida/Ahorro. Son las del
+  transacciones de esa cuenta`. Cuentas actuales del usuario: Efectivo, **Bancolombia**
+  (antes «Cuenta bancaria» + «Ahorros», unificadas en la v2: `hasSavings: true` y
+  `savingsInitialBalance`; el ahorro es un **bolsillo** dentro de la cuenta, **no es Nequi**),
+  Tarjeta de crédito (`creditLimit` es solo referencia, nunca suma al total) y las cuentas
+  en USD (ARQ). El saldo del bolsillo (`pocketBalance`) ya está incluido en `accountBalance`;
+  `availableBalance` = total − bolsillo. No se suma el bolsillo aparte en `totalBalance`.
+- **categories**: `{ id, name, kind, noBudget? }`, `kind` ∈ Entrada/Salida/Ahorro. Son las del
   Excel original del usuario (Salario, Pasajes, Seguridad Social, Servicios, Niña,
   Margui, Otros, Ahorro) — "Otros" es el cajón de sastre heredado del Excel.
+  `noBudget: true` = **gasto libre** (Comida Gatos, Gasolina, Otros, Pasajes): sin presupuesto fijo,
+  Presupuesto solo muestra lo gastado. Se marca en la migración por nombre y se edita en Ajustes.
 - **transactions**: `{ id, date, accountId, categoryId, description, type, amount,
-  excludeFromCategoryTotals? }`. `amount` ya trae el signo (Entrada positivo, Salida
-  negativo) — el `type` es solo para mostrar el pill.
-- **budgets**: `{ month, categoryId, estimated }` — el "estimado" mensual manual del
-  usuario, se compara contra el `real` calculado de las transacciones.
+  excludeFromCategoryTotals?, pocket?, transferId?, conversionId?, fxRate? }`. `amount` ya trae el signo
+  (Entrada positivo, Salida negativo) — el `type` es solo para mostrar el pill. `pocket: "ahorro"` =
+  el movimiento ocurre dentro del bolsillo de ahorro de la cuenta.
+- **budgets**: `{ month, categoryId, estimated }` — el estimado **editado a mano en un mes concreto**
+  (gana sobre el valor por defecto). Los gastos se guardan en negativo, la UI muestra magnitudes.
+- **budgetDefaults**: `[{ categoryId, amount, from: "YYYY-MM" }]` — historial del estimado fijo de cada
+  categoría con presupuesto. Estimado de un mes (`getEstimate`) = override en `budgets` → último default con
+  `from <= mes` → 0. Cambiar el default en Ajustes (`setBudgetDefault`) escribe una entrada con
+  `from` = **mes siguiente**, así el mes en curso y los anteriores no cambian. Limitación: el mes en
+  curso no toma un default nuevo hasta que se edite a mano o llegue el mes siguiente.
+  La pestaña Presupuesto muestra solo categorías `Salida` (sin Salario ni Ahorro); el ahorro se ve
+  como bloque «Bancolombia › Ahorro».
 
 ### Tarjeta de crédito: ciclo, 45 días y avisos
 
@@ -83,34 +100,36 @@ corte 30 / pago 19 se mantienen todos los meses.
 ### Multimoneda y conversiones
 
 `accountBalance` devuelve el saldo en la moneda de la cuenta; `totalBalance`, Presupuesto, Total y
-Gráficas convierten a COP con `toBase`/`txBase`. Una **conversión** (Diario → "Convertir divisas",
-`addConversion`) crea dos movimientos espejo (uno por cuenta, cada uno en su moneda) con `fxRate` y
+Gráficas convierten a COP con `toBase`/`txBase`. Una **conversión** (Diario → "Transferir" entre cuentas de
+distinta moneda, `addConversion`) crea dos movimientos espejo (uno por cuenta, cada uno en su moneda) con `fxRate` y
 `conversionId`, `categoryId: null`, y **ambos** con `excludeFromCategoryTotals: true` (el ingreso real ya
-se registró como Entrada cuando llegó el pago). Se borran juntos (`deleteConversion`), no se editan.
+se registró como Entrada cuando llegó el pago). Se borran juntos (`deleteTransfer`), no se editan.
 
 ### Transferencias entre cuentas propias — la parte no obvia
 
-Cuando el usuario mueve dinero entre sus propias cuentas (p. ej. Cuenta bancaria →
-Ahorros, o un retiro Cuenta bancaria → Efectivo), se registran **dos transacciones
-espejo** (mismo monto, signo opuesto, misma fecha, misma categoría) — una en cada
-cuenta. Eso mantiene el balance de cada cuenta correcto.
+Mover dinero entre cuentas propias (banco → efectivo, pago de la tarjeta de crédito, Disponible ↔ Ahorro de
+Bancolombia) es **un solo registro** para el usuario: Diario/Inicio → botón **«Transferir»**
+(`openTransferForm` → `addTransfer` en `state.js`). En los datos siguen siendo **dos movimientos espejo**
+(signo opuesto, misma fecha) con el mismo `transferId`, `type: "Transferencia"`, `categoryId: null` y
+`excludeFromCategoryTotals: true` en **ambos** lados: así los saldos de cada cuenta quedan bien y la
+transferencia no entra en Presupuesto/Total/«Gasto por categoría». El pago de la tarjeta es una
+transferencia hacia la cuenta `credit` (el `+` cuenta como abono en `card.js`). Si las monedas difieren,
+el mismo formulario crea una conversión (`addConversion`). Se borran juntos (`deleteTransfer`), no se editan.
 
-El problema: `budgetRowsForMonth` y `totalRowsAllTime` (en `state.js`) suman "real"
-por categoría **sin filtrar por cuenta** — si ambos lados de la transferencia cuentan,
-se cancelan matemáticamente a cero (o se duplica el monto), y esas tablas dejan de
-servir. La regla acordada con el usuario: **solo el lado de Cuenta bancaria cuenta**
-para las tablas de Presupuesto/Total/gráfico "Gasto por categoría"/"Entradas vs
-Salidas". El otro lado (Ahorros, o el lado que recibe el retiro en Efectivo) lleva
-`excludeFromCategoryTotals: true`, y esas vistas filtran `!t.excludeFromCategoryTotals`.
+`budgetRowsForMonth` y `totalRowsAllTime` suman "real" por categoría **sin filtrar por cuenta**, por eso toda vista
+nueva que agrupe por categoría debe filtrar `!t.excludeFromCategoryTotals`.
 
-Si agregas una nueva vista que agrupe por categoría, aplica el mismo filtro. Si
-agregas un nuevo tipo de transferencia (p. ej. pagos de tarjeta de crédito), sigue el
-mismo patrón: un lado cuenta, el otro lleva la bandera.
+**Transferencias legadas (antes de la v2):** 13–15 pares espejo Cuenta bancaria ↔ Ahorros / Efectivo registrados
+a mano con la regla antigua «un lado cuenta con su categoría, el otro lleva la bandera». No tienen `transferId`
+y se dejan tal cual (no se re-emparejan): siguen cuadrando porque la bandera ya estaba en el lado que no cuenta.
 
-El gráfico "Evolución del ahorro" (`savingsSeries` en `state.js`) **no** usa la
-categoría — usa directamente las transacciones de la cuenta `acc_ahorros` para
-mostrar el saldo real de esa cuenta en el tiempo (más confiable que sumar por
-categoría).
+El gráfico "Evolución del ahorro" (`savingsSeries` en `state.js`) **no** usa la categoría — suma los
+movimientos con `pocket: "ahorro"` de las cuentas con bolsillo, más su `savingsInitialBalance`.
+
+### Fechas
+
+Siempre en **hora local**: usa `todayIso()` (`card.js`, reexportada por `state.js`) y `currentMonth()`. Nunca
+`new Date().toISOString()` para «hoy»: es UTC y en Colombia, después de las 19:00, ya devuelve el día siguiente.
 
 ## seed-data.json es una plantilla vacía — NUNCA subir datos reales aquí
 

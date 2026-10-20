@@ -3,7 +3,9 @@ export const state = {
   dirty: false,
 };
 
-import { DEFAULT_CUT_DAY, DEFAULT_PAY_DAY } from "./card.js";
+import { DEFAULT_CUT_DAY, DEFAULT_PAY_DAY, todayIso } from "./card.js";
+
+export { todayIso };
 
 export const BASE_CURRENCY = "COP";
 export const CURRENCIES = ["COP", "USD"];
@@ -22,7 +24,48 @@ export function setData(data) {
       a.payDay = Number(a.payDay) || DEFAULT_PAY_DAY;
     }
   });
+  data.budgetDefaults = data.budgetDefaults || [];
+  migrateToV2(data);
   state.data = data;
+}
+
+// --- Migracion de esquema ---
+export const SCHEMA_VERSION = 2;
+export const POCKET_SAVINGS = "ahorro";
+// Categorias de gasto libre (sin presupuesto fijo): solo se muestra lo gastado en el mes.
+const FREE_CATEGORY_NAMES = ["comida gatos", "gasolina", "otros", "pasajes"];
+const normName = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+
+export function needsMigration(data) {
+  return (data?.meta?.schemaVersion || 1) < SCHEMA_VERSION;
+}
+
+// v1 -> v2: la cuenta "Ahorros" pasa a ser un bolsillo de la cuenta bancaria (Bancolombia) y las
+// categorias de gasto libre quedan marcadas. Idempotente: se guarda en meta.schemaVersion.
+function migrateToV2(data) {
+  if (!needsMigration(data)) return;
+  data.categories.forEach((c) => {
+    if (FREE_CATEGORY_NAMES.includes(normName(c.name))) c.noBudget = true;
+  });
+  const sav = data.accounts.find((a) => a.id === "acc_ahorros") || data.accounts.find((a) => a.type === "savings");
+  const bank =
+    data.accounts.find((a) => a.id === "acc_banco") ||
+    data.accounts.find((a) => a.type === "bank" && a.currency === BASE_CURRENCY && a !== sav);
+  if (sav && bank && sav !== bank && sav.currency === bank.currency) {
+    const savInitial = Number(sav.initialBalance) || 0;
+    bank.initialBalance = (Number(bank.initialBalance) || 0) + savInitial;
+    bank.savingsInitialBalance = (Number(bank.savingsInitialBalance) || 0) + savInitial;
+    bank.hasSavings = true;
+    data.transactions.forEach((t) => {
+      if (t.accountId === sav.id) {
+        t.accountId = bank.id;
+        t.pocket = POCKET_SAVINGS;
+      }
+    });
+    data.accounts = data.accounts.filter((a) => a !== sav);
+  }
+  if (bank && normName(bank.name) === "cuenta bancaria") bank.name = "Bancolombia";
+  data.meta.schemaVersion = SCHEMA_VERSION;
 }
 
 function uid(prefix) {
@@ -67,8 +110,12 @@ export function accountById(id) {
 }
 
 // --- Accounts ---
-export function addAccount({ name, type, initialBalance, creditLimit, cutDay, payDay, currency: cur }) {
+export function addAccount({ name, type, initialBalance, creditLimit, cutDay, payDay, currency: cur, hasSavings, savingsInitialBalance }) {
   const acc = { id: uid("acc"), name, type, initialBalance: Number(initialBalance) || 0, currency: CURRENCIES.includes(cur) ? cur : BASE_CURRENCY };
+  if (hasSavings) {
+    acc.hasSavings = true;
+    acc.savingsInitialBalance = Number(savingsInitialBalance) || 0;
+  }
   if (type === "credit") {
     acc.creditLimit = Number(creditLimit) || 0;
     acc.cutDay = Number(cutDay) || DEFAULT_CUT_DAY;
@@ -85,8 +132,8 @@ export function deleteAccount(id) {
 }
 
 // --- Categories ---
-export function addCategory({ name, kind }) {
-  state.data.categories.push({ id: uid("cat"), name, kind });
+export function addCategory({ name, kind, noBudget }) {
+  state.data.categories.push({ id: uid("cat"), name, kind, ...(noBudget ? { noBudget: true } : {}) });
 }
 export function updateCategory(id, patch) {
   const cat = categoryById(id);
@@ -127,18 +174,76 @@ export function addConversion({ date, fromAccountId, toAccountId, amountFrom, ra
   addTransaction({ ...common, accountId: to.id, amount: round(amountTo, to.currency) });
   return true;
 }
-export function deleteConversion(tx) {
-  state.data.transactions = state.data.transactions.filter((t) => (tx.conversionId ? t.conversionId !== tx.conversionId : t.id !== tx.id));
+
+// Transferencia entre cuentas propias de la misma moneda (o entre la cuenta y su bolsillo de ahorro):
+// un solo registro para el usuario, dos movimientos espejo para los saldos. Ninguno cuenta en
+// Presupuesto/Total/Graficas por categoria (categoryId null + excludeFromCategoryTotals).
+// El pago de la tarjeta de credito es una transferencia hacia la cuenta `credit`.
+export function addTransfer({ date, fromAccountId, fromPocket, toAccountId, toPocket, amount, description }) {
+  const from = accountById(fromAccountId);
+  const to = accountById(toAccountId);
+  const amt = Math.abs(Number(amount));
+  const fp = fromPocket || undefined;
+  const tp = toPocket || undefined;
+  if (!from || !to || from.currency !== to.currency || !(amt > 0) || !date) return false;
+  if (from.id === to.id && fp === tp) return false;
+  if ((fp && !accountHasPocket(from)) || (tp && !accountHasPocket(to))) return false;
+  const label = (acc, pocket) => (pocket ? `${acc.name} › Ahorro` : acc.name);
+  const desc = (description || "").trim() || `Transferencia ${label(from, fp)} → ${label(to, tp)}`;
+  const transferId = uid("tr");
+  const common = { date, categoryId: null, description: desc, type: "Transferencia", excludeFromCategoryTotals: true, transferId };
+  addTransaction({ ...common, accountId: from.id, amount: -amt, ...(fp ? { pocket: fp } : {}) });
+  addTransaction({ ...common, accountId: to.id, amount: amt, ...(tp ? { pocket: tp } : {}) });
+  return true;
 }
+// Borra una transferencia o conversion completa (ambos lados).
+export function deleteTransfer(tx) {
+  const key = tx.transferId ? "transferId" : tx.conversionId ? "conversionId" : null;
+  state.data.transactions = state.data.transactions.filter((t) => (key ? t[key] !== tx[key] : t.id !== tx.id));
+}
+export const deleteConversion = deleteTransfer;
+export const isPairedTransfer = (tx) => !!(tx && (tx.transferId || tx.conversionId));
 
 // --- Budgets ---
 export function getBudget(month, categoryId) {
   return state.data.budgets.find((b) => b.month === month && b.categoryId === categoryId);
 }
+// Los gastos se guardan en negativo (igual que sus movimientos); el usuario escribe el monto en positivo.
+function signedBudget(categoryId, value) {
+  const n = Number(value) || 0;
+  return categoryById(categoryId)?.kind === "Salida" ? -Math.abs(n) : n;
+}
 export function setBudget(month, categoryId, estimated) {
+  const value = signedBudget(categoryId, estimated);
   const existing = getBudget(month, categoryId);
-  if (existing) existing.estimated = Number(estimated) || 0;
-  else state.data.budgets.push({ month, categoryId, estimated: Number(estimated) || 0 });
+  if (existing) existing.estimated = value;
+  else state.data.budgets.push({ month, categoryId, estimated: value });
+}
+// Valor por defecto vigente en un mes: el ultimo con `from <= mes` (historial, solo se agregan).
+export function getBudgetDefault(month, categoryId) {
+  const list = state.data.budgetDefaults
+    .filter((d) => d.categoryId === categoryId && d.from <= month)
+    .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+  return list.length ? list[list.length - 1] : undefined;
+}
+// Estimado efectivo: el que se haya editado a mano en ese mes y, si no, el valor por defecto vigente.
+export function getEstimate(month, categoryId) {
+  const own = getBudget(month, categoryId);
+  if (own) return own.estimated;
+  return getBudgetDefault(month, categoryId)?.amount ?? 0;
+}
+export function nextMonth(month) {
+  const [y, m] = month.split("-").map(Number);
+  const t = y * 12 + m; // (m - 1) + 1
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+}
+// Cambia el valor por defecto SOLO para los meses siguientes al actual: el mes en curso y los
+// anteriores conservan lo que ya tenian. `from` es inyectable para las pruebas.
+export function setBudgetDefault(categoryId, amount, from = nextMonth(currentMonth())) {
+  const value = signedBudget(categoryId, amount);
+  const existing = state.data.budgetDefaults.find((d) => d.categoryId === categoryId && d.from === from);
+  if (existing) existing.amount = value;
+  else state.data.budgetDefaults.push({ categoryId, amount: value, from });
 }
 
 // --- Computations ---
@@ -149,6 +254,24 @@ export function accountBalance(accountId) {
     .filter((t) => t.accountId === accountId)
     .reduce((s, t) => s + Number(t.amount), 0);
   return base + sum;
+}
+
+// Una cuenta puede tener un bolsillo "Ahorro" (Bancolombia): su saldo ya esta incluido en accountBalance.
+export function accountHasPocket(acc) {
+  return !!acc?.hasSavings;
+}
+// Saldo del bolsillo de ahorro de una cuenta (parte del saldo total de la cuenta).
+export function pocketBalance(accountId, pocket = POCKET_SAVINGS) {
+  const acc = accountById(accountId);
+  const base = acc ? Number(acc.savingsInitialBalance) || 0 : 0;
+  const sum = state.data.transactions
+    .filter((t) => t.accountId === accountId && t.pocket === pocket)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  return base + sum;
+}
+// Lo que queda fuera del bolsillo: saldo total menos ahorro.
+export function availableBalance(accountId) {
+  return accountBalance(accountId) - pocketBalance(accountId);
 }
 
 // Saldo total expresado en COP (las cuentas en USD se valoran con usdValuationRate).
@@ -164,8 +287,9 @@ export function monthsWithData() {
   return months;
 }
 
+// Mes actual en hora local (toISOString da UTC: de noche en Colombia ya es el mes/dia siguiente).
 export function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
+  return todayIso().slice(0, 7);
 }
 
 // Rows for the monthly budget view: one per category, with estimado/real/balance.
@@ -174,8 +298,7 @@ export function currentMonth() {
 // out so a transfer isn't counted twice under the same category.
 export function budgetRowsForMonth(month) {
   return state.data.categories.map((cat) => {
-    const budget = getBudget(month, cat.id);
-    const estimated = budget ? budget.estimated : 0;
+    const estimated = getEstimate(month, cat.id);
     const real = state.data.transactions
       .filter((t) => t.categoryId === cat.id && t.date.slice(0, 7) === month && !t.excludeFromCategoryTotals)
       .reduce((s, t) => s + txBase(t), 0);
@@ -197,16 +320,27 @@ export function transactionsSorted() {
   return [...state.data.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
-// Real balance of the Ahorros account over time, one point per month with data.
+// Saldo real del bolsillo de ahorro (Bancolombia › Ahorro) en el tiempo, un punto por mes con datos.
 export function savingsSeries() {
   const months = monthsWithData();
-  const ahorros = state.data.accounts.find((a) => a.id === "acc_ahorros");
-  let running = ahorros ? Number(ahorros.initialBalance) || 0 : 0;
+  const pockets = state.data.accounts.filter((a) => a.currency === BASE_CURRENCY && (accountHasPocket(a) || state.data.transactions.some((t) => t.accountId === a.id && t.pocket === POCKET_SAVINGS)));
+  const ids = new Set(pockets.map((a) => a.id));
+  let running = pockets.reduce((s, a) => s + (Number(a.savingsInitialBalance) || 0), 0);
   return months.map((month) => {
     const monthSum = state.data.transactions
-      .filter((t) => t.accountId === "acc_ahorros" && t.date.slice(0, 7) === month)
+      .filter((t) => ids.has(t.accountId) && t.pocket === POCKET_SAVINGS && t.date.slice(0, 7) === month)
       .reduce((s, t) => s + Number(t.amount), 0);
     running += monthSum;
     return { month, cumulative: running };
   });
+}
+// Lo aportado (neto) al bolsillo de ahorro en un mes.
+export function savingsContribution(month, accountId) {
+  return state.data.transactions
+    .filter((t) => t.pocket === POCKET_SAVINGS && (!accountId || t.accountId === accountId) && t.date.slice(0, 7) === month)
+    .reduce((s, t) => s + Number(t.amount), 0);
+}
+// Cuentas con bolsillo de ahorro y su saldo total (para mostrar "Bancolombia › Ahorro").
+export function pocketAccounts() {
+  return state.data.accounts.filter(accountHasPocket);
 }

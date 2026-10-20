@@ -16,6 +16,16 @@ import {
   totalBalance,
   budgetRowsForMonth,
   totalRowsAllTime,
+  todayIso,
+  nextMonth,
+  pocketBalance,
+  availableBalance,
+  savingsSeries,
+  addTransfer,
+  deleteTransfer,
+  setBudget,
+  setBudgetDefault,
+  getEstimate,
 } from "../state.js";
 
 function freshData() {
@@ -128,4 +138,143 @@ test("deleteConversion borra los dos lados y deja el resto", () => {
   deleteConversion(state.data.transactions.find((t) => t.fxRate));
   assert.equal(state.data.transactions.length, 1);
   assert.equal(state.data.transactions[0].amount, 500);
+});
+
+// --- Fecha local, transferencias, Bancolombia y presupuesto por defecto ---
+
+test("todayIso usa la hora local: a las 22:30 sigue siendo el mismo día", () => {
+  assert.equal(todayIso(new Date(2026, 9, 20, 22, 30)), "2026-10-20");
+  assert.equal(todayIso(new Date(2026, 11, 31, 23, 59)), "2026-12-31");
+});
+
+test("nextMonth cruza el cambio de año", () => {
+  assert.equal(nextMonth("2026-10"), "2026-11");
+  assert.equal(nextMonth("2026-12"), "2027-01");
+});
+
+function dataV1() {
+  return {
+    meta: { schemaVersion: 1 },
+    accounts: [
+      { id: "acc_efectivo", name: "Efectivo", type: "cash", initialBalance: 0 },
+      { id: "acc_banco", name: "Cuenta bancaria", type: "bank", initialBalance: 1000 },
+      { id: "acc_ahorros", name: "Ahorros", type: "savings", initialBalance: 300 },
+      { id: "acc_credito", name: "Tarjeta de crédito", type: "credit", initialBalance: -500, creditLimit: 4000 },
+    ],
+    categories: [
+      { id: "sal", name: "Salario", kind: "Entrada" },
+      { id: "seg", name: "Seguridad Social", kind: "Salida" },
+      { id: "gas", name: "Gasolina", kind: "Salida" },
+      { id: "com", name: "Comida Gatos", kind: "Salida" },
+      { id: "pas", name: "Pasajes", kind: "Salida" },
+      { id: "otr", name: "Otros", kind: "Salida" },
+      { id: "aho", name: "Ahorro", kind: "Ahorro" },
+    ],
+    transactions: [
+      { id: "t1", date: "2026-09-01", accountId: "acc_banco", categoryId: "aho", type: "Salida", amount: -200 },
+      { id: "t2", date: "2026-09-01", accountId: "acc_ahorros", categoryId: "aho", type: "Entrada", amount: 200, excludeFromCategoryTotals: true },
+    ],
+    budgets: [],
+  };
+}
+
+test("migración v1→v2: Ahorros pasa a bolsillo de Bancolombia sin cambiar el saldo total", () => {
+  const d = dataV1();
+  const totalAntes = d.accounts.reduce((s, a) => s + a.initialBalance, 0) + d.transactions.reduce((s, t) => s + t.amount, 0);
+  setData(d);
+  assert.equal(state.data.meta.schemaVersion, 2);
+  assert.equal(state.data.accounts.find((a) => a.id === "acc_ahorros"), undefined);
+  const banco = state.data.accounts.find((a) => a.id === "acc_banco");
+  assert.equal(banco.name, "Bancolombia");
+  assert.equal(banco.hasSavings, true);
+  assert.equal(accountBalance("acc_banco"), 1000 + 300 - 200 + 200);
+  assert.equal(pocketBalance("acc_banco"), 300 + 200);
+  assert.equal(availableBalance("acc_banco"), 1000 - 200);
+  assert.equal(totalBalance(), totalAntes);
+  assert.equal(state.data.transactions.find((t) => t.id === "t2").pocket, "ahorro");
+  assert.equal(state.data.transactions.find((t) => t.id === "t1").pocket, undefined);
+});
+
+test("migración v1→v2 es idempotente y marca las categorías de gasto libre", () => {
+  setData(dataV1());
+  const una = JSON.stringify(state.data);
+  setData(JSON.parse(una));
+  assert.equal(JSON.stringify(state.data), una);
+  const libres = state.data.categories.filter((c) => c.noBudget).map((c) => c.name).sort();
+  assert.deepEqual(libres, ["Comida Gatos", "Gasolina", "Otros", "Pasajes"]);
+});
+
+test("savingsSeries sigue el saldo del bolsillo de ahorro", () => {
+  setData(dataV1());
+  const s = savingsSeries();
+  assert.equal(s.at(-1).cumulative, 500);
+});
+
+test("addTransfer: efectivo ⇄ banco es UN registro con dos movimientos espejo, fuera de las categorías", () => {
+  setData(dataV1());
+  assert.equal(addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: 100 }), true);
+  const [a, b] = state.data.transactions.slice(-2);
+  assert.equal(a.amount, -100);
+  assert.equal(b.amount, 100);
+  assert.equal(a.transferId, b.transferId);
+  for (const t of [a, b]) {
+    assert.equal(t.categoryId, null);
+    assert.equal(t.excludeFromCategoryTotals, true);
+  }
+  assert.equal(accountBalance("acc_efectivo"), 100);
+  assert.equal(accountBalance("acc_banco"), 1000 + 300 - 200 + 200 - 100);
+  assert.ok(budgetRowsForMonth("2026-10").every((r) => r.real === 0));
+});
+
+test("addTransfer: pago de tarjeta reduce la deuda y Disponible → Ahorro mueve el bolsillo", () => {
+  setData(dataV1());
+  addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_credito", amount: 500 });
+  assert.equal(accountBalance("acc_credito"), 0);
+  const antes = accountBalance("acc_banco");
+  const bolsilloAntes = pocketBalance("acc_banco");
+  addTransfer({ date: "2026-10-06", fromAccountId: "acc_banco", toAccountId: "acc_banco", toPocket: "ahorro", amount: 50 });
+  assert.equal(accountBalance("acc_banco"), antes);
+  assert.equal(pocketBalance("acc_banco"), bolsilloAntes + 50);
+});
+
+test("addTransfer rechaza origen = destino, montos inválidos, monedas distintas y bolsillo inexistente", () => {
+  setData(dataV1());
+  const base = { date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: 10 };
+  assert.equal(addTransfer({ ...base, toAccountId: "acc_banco" }), false);
+  assert.equal(addTransfer({ ...base, amount: 0 }), false);
+  assert.equal(addTransfer({ ...base, toAccountId: "nope" }), false);
+  assert.equal(addTransfer({ ...base, toAccountId: "acc_efectivo", toPocket: "ahorro" }), false);
+  addAccount({ name: "ARQ", type: "bank", initialBalance: 0, currency: "USD" });
+  assert.equal(addTransfer({ ...base, toAccountId: state.data.accounts.at(-1).id }), false);
+  assert.equal(state.data.transactions.length, 2);
+});
+
+test("deleteTransfer borra los dos lados de una transferencia", () => {
+  setData(dataV1());
+  addTransfer({ date: "2026-10-05", fromAccountId: "acc_banco", toAccountId: "acc_efectivo", amount: 100 });
+  deleteTransfer(state.data.transactions.find((t) => t.transferId));
+  assert.equal(state.data.transactions.length, 2);
+});
+
+test("presupuesto por defecto: un cambio solo aplica a los meses siguientes", () => {
+  setData(dataV1());
+  setBudgetDefault("seg", 200000, "2026-10");
+  assert.equal(getEstimate("2026-09", "seg"), 0);
+  assert.equal(getEstimate("2026-10", "seg"), -200000);
+  assert.equal(getEstimate("2027-03", "seg"), -200000);
+  setBudgetDefault("seg", 250000, "2026-12"); // nuevo valor desde diciembre
+  assert.equal(getEstimate("2026-10", "seg"), -200000);
+  assert.equal(getEstimate("2026-11", "seg"), -200000);
+  assert.equal(getEstimate("2026-12", "seg"), -250000);
+  assert.equal(getEstimate("2027-01", "seg"), -250000);
+});
+
+test("presupuesto: lo editado en un mes gana al valor por defecto y no cambia los demás", () => {
+  setData(dataV1());
+  setBudgetDefault("seg", 200000, "2026-10");
+  setBudget("2026-11", "seg", 300000);
+  assert.equal(getEstimate("2026-11", "seg"), -300000);
+  assert.equal(getEstimate("2026-10", "seg"), -200000);
+  assert.equal(getEstimate("2026-12", "seg"), -200000);
+  assert.equal(budgetRowsForMonth("2026-11").find((r) => r.category.id === "seg").estimated, -300000);
 });

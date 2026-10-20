@@ -20,6 +20,7 @@
 | date | Fecha | Sí | — | Fecha de hoy (al crear) o la del movimiento (al editar) | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
 | type | Selección (Entrada, Salida) | Sí | Solo Entrada o Salida | Salida (al crear) | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
 | accountId | Selección | Sí | Una cuenta existente | Primera cuenta de la lista (al crear) | No | — | La moneda del monto es la moneda de la cuenta elegida | Mensaje nativo del navegador para campo requerido | Front |
+| pocket | Selección (Disponible, Ahorro) | No | Solo Disponible (vacío) o Ahorro | Disponible | No | accountId | Solo se muestra si la cuenta tiene bolsillo de ahorro (p. ej. Bancolombia); si no, queda vacío | — | Front |
 | categoryId | Selección | Sí | Una categoría existente | Primera categoría de la lista (al crear) | No | — | — | Mensaje nativo del navegador para campo requerido | Front |
 | description | Texto | No | — | Vacío | No | — | — | — | Front |
 | amount | Numérico decimal | Sí | Mín 0, paso 0.01 | Vacío (al crear) | No | accountId, type | Se guarda positivo para Entrada y negativo para Salida; se expresa en la moneda de la cuenta | Mensaje nativo del navegador para campo requerido o valor menor a 0 | Front |
@@ -32,15 +33,17 @@
 | type | 2 | No | — |
 | accountId | 3 | No | — |
 | categoryId | 4 | No | — |
-| description | 5 | No | — |
-| amount | 6 | No | — |
+| pocket | 5 | No (oculto si la cuenta no tiene bolsillo) | — |
+| description | 6 | No | — |
+| amount | 7 | No | — |
 
 ### Notas y justificaciones
 
 - **Back y BD:** la app es un sitio estático sin backend ni base de datos propia; los datos viven en un archivo JSON del Google Drive del usuario. Por eso no hay capas Back ni BD, y el Nivel 4 y el Nivel 5 no aplican.
 - **Mensajes de error:** el formulario usa la validación nativa de HTML5 (`required`, `min`, `step`); no define textos propios.
 - **Orden de tabulación:** es el orden natural del DOM; no hay `tabindex`.
-- **Movimientos de conversión:** los creados por "Convertir divisas" no se editan con este formulario; al tocarlos se ofrece borrar la conversión completa.
+- **Fecha de hoy:** se calcula en hora local (`todayIso`), no en UTC; de noche en Colombia ya no salta al día siguiente.
+- **Transferencias y conversiones:** los movimientos creados por "Transferir" (ver `schema_transferir.md`) no se editan con este formulario; al tocarlos se ofrece borrar el par completo.
 
 ### Versión y revisión (del schema de ese formulario, no de esta plantilla)
 

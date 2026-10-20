@@ -1,5 +1,5 @@
-import { initTokenClient, signIn, signInSilent, restoreSession, loadOrCreateData, saveData } from "./drive.js";
-import { state, setData, setRates, getRates } from "./state.js";
+import { initTokenClient, signIn, signInSilent, restoreSession, loadOrCreateData, saveData, backupDataFile } from "./drive.js";
+import { state, setData, setRates, getRates, needsMigration } from "./state.js";
 import { fetchRates, REFRESH_MS } from "./fx.js";
 import { checkCardNotifications } from "./views/tarjeta.js";
 import { renderDashboard } from "./views/dashboard.js";
@@ -66,9 +66,14 @@ async function handleSignIn() {
 async function loadDataAndShowApp() {
   const seedResp = await fetch("./seed-data.json").then((r) => r.json());
   const { data, created } = await loadOrCreateData(seedResp);
+  // Un archivo con esquema viejo se respalda en Drive ANTES de migrarlo; si el respaldo falla
+  // se aborta la carga (el archivo original queda intacto).
+  const migrating = !created && needsMigration(data);
+  if (migrating) await backupDataFile(data, data.meta?.schemaVersion || 1);
   setData(data);
   showApp();
   setSyncStatus("saved", created ? "Archivo creado en Drive" : "Sincronizado");
+  if (migrating) markDirty();
   switchView("dashboard");
   startRateUpdates();
 }
