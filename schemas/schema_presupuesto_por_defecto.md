@@ -46,6 +46,6 @@ Hay un campo `amount` por cada categoría de tipo Salida que no sea de gasto lib
 | Campo | Valor |
 |---|---|
 | Versión del schema | v1.0 |
-| Fecha de aprobación | Pendiente |
-| Aprobado por | Pendiente |
+| Fecha de aprobación | 20/10/2026 |
+| Aprobado por | Desarrollador |
 | Próxima revisión | Cuando el formulario cambie de campos o de reglas |
